@@ -1,7 +1,7 @@
 <div class="sidebar">
     <div class="sidebar-header">
-        <h2>GAPC</h2>
-        <p style="font-size: 0.8rem; opacity: 0.7;">Sistema Gestor</p>
+        <h2  style="color: #ffffff">GAPC</h2>
+        <p style="font-size: 0.8rem; opacity: 0.9; ">Sistema Gestor</p>
     </div>
 
     <ul class="sidebar-menu">
