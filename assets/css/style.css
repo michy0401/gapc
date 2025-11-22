@@ -1,6 +1,4 @@
-/* =========================================
-   1. VARIABLES & BASE
-   ========================================= */
+/* styles.css - GAPC System*/
 :root {
     --color-brand:      #1A237E;
     --color-brand-dark: #121858;
@@ -24,14 +22,12 @@ body {
     color: var(--text-main);
     display: flex;
     min-height: 100vh;
-    overflow-x: hidden; /* Evita scroll horizontal accidental */
+    overflow-x: hidden; 
 }
 
 a { text-decoration: none; }
 
-/* =========================================
-   2. SIDEBAR (MENÚ LATERAL)
-   ========================================= */
+
 .sidebar {
     width: var(--sidebar-width);
     background-color: var(--bg-sidebar);
@@ -43,7 +39,6 @@ a { text-decoration: none; }
     display: flex;
     flex-direction: column;
     z-index: 1000;
-    transition: left 0.3s ease; /* Animación suave al entrar/salir */
 }
 
 .sidebar-header {
@@ -82,9 +77,7 @@ a { text-decoration: none; }
     border-top: 1px solid rgba(255,255,255,0.1);
 }
 
-/* =========================================
-   3. MAIN CONTENT & TOPBAR
-   ========================================= */
+
 .main-content {
     margin-left: var(--sidebar-width);
     width: calc(100% - var(--sidebar-width));
@@ -99,15 +92,15 @@ a { text-decoration: none; }
     padding: 0 20px;
     display: flex;
     align-items: center;
-    justify-content: space-between; /* Separar botón menú y usuario */
+    justify-content: space-between; 
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    position: sticky; /* Se queda pegada arriba al hacer scroll */
+    position: sticky; 
     top: 0;
     z-index: 900;
 }
 
 .mobile-menu-btn {
-    display: none; /* Oculto en PC por defecto */
+    display: none; 
     font-size: 2rem;
     color: var(--color-brand);
     cursor: pointer;
@@ -119,20 +112,18 @@ a { text-decoration: none; }
     gap: 10px;
     font-weight: 600;
     color: var(--color-brand);
-    margin-left: auto; /* Empuja a la derecha */
+    margin-left: auto; 
 }
 
 .page-content {
-    padding: 20px; /* Reduje un poco el padding para móviles */
+    padding: 20px; 
     flex-grow: 1;
 }
 
-/* =========================================
-   4. TARJETAS DASHBOARD
-   ========================================= */
+
 .grid-dashboard {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsive automático */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
     gap: 20px;
     margin-top: 20px;
 }
@@ -149,7 +140,7 @@ a { text-decoration: none; }
     transition: transform 0.2s;
     border-left: 5px solid var(--color-brand);
     color: var(--text-main);
-    text-decoration: none; /* Asegura que no se subraye todo el texto */
+    text-decoration: none; 
 }
 
 .card-compact:hover { transform: translateY(-3px); }
@@ -173,45 +164,37 @@ a { text-decoration: none; }
 .card-info h3 { font-size: 1.1rem; margin-bottom: 2px; color: var(--text-main); }
 .card-info p { font-size: 0.9rem; color: #666; margin: 0; }
 
-/* =========================================
-   5. ESTILOS RESPONSIVE (MOVIL) 📱
-   ========================================= */
+
 @media (max-width: 768px) {
     
-    /* 1. Ocultar Sidebar por defecto moviéndola a la izquierda */
     .sidebar {
-        left: -100%; /* Completamente fuera de pantalla */
-        width: 80%; /* Ocupa casi toda la pantalla al abrirse */
+        left: -100%; 
+        width: 80%; 
         max-width: 300px;
         box-shadow: 2px 0 10px rgba(0,0,0,0.2);
     }
 
-    /* Clase activa para mostrar sidebar (se agrega con JS) */
     .sidebar.active {
         left: 0;
     }
 
-    /* 2. Expandir el contenido principal */
     .main-content {
         margin-left: 0;
         width: 100%;
     }
 
-    /* 3. Mostrar el botón de menú */
     .mobile-menu-btn {
         display: block;
     }
 
-    /* 4. Ajustes visuales para pantallas pequeñas */
     .user-name {
-        display: none; /* Ocultamos el "Hola Juan" si no cabe, dejamos solo el icono */
+        display: none; 
     }
     
     .grid-dashboard {
-        grid-template-columns: 1fr; /* Una sola columna en celular */
+        grid-template-columns: 1fr; 
     }
     
-    /* Sombra oscura en el fondo cuando el menú está abierto */
     .overlay {
         display: none;
         position: fixed;
