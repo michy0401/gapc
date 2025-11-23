@@ -176,6 +176,7 @@ if ($ciclo_activo_id) {
                     <th>Nombre Ciclo</th>
                     <th>Inicio - Fin</th>
                     <th>Estado</th>
+                    <th>Accion</th>
                 </tr>
             </thead>
             <tbody>
@@ -191,6 +192,17 @@ if ($ciclo_activo_id) {
                                 <span class="badge" style="background: <?php echo ($c['estado']=='ACTIVO')?'#E8F5E9':'#eee'; ?>;">
                                     <?php echo $c['estado']; ?>
                                 </span>
+                            </td>
+                            <td>
+                                <a href="ver_ciclo.php?id=<?php echo $c['id']; ?>" class="btn btn-sm btn-secondary" title="Ver Detalles">
+                                    <i class='bx bx-show'></i>
+                                </a>
+
+                                <?php if($c['estado'] == 'ACTIVO'): ?>
+                                    <a href="../miembros/index.php?ciclo_id=<?php echo $c['id']; ?>" class="btn btn-sm btn-brand">
+                                        <i class='bx bx-group'></i>
+                                    </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>

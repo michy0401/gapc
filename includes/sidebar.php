@@ -1,7 +1,7 @@
 <div class="sidebar">
     <div class="sidebar-header">
-        <h2  style="color: #ffffff">GAPC</h2>
-        <p style="font-size: 0.8rem; opacity: 0.9; ">Sistema Gestor</p>
+        <h2 style="color: #ffffff">GAPC</h2>
+        <p style="font-size: 0.8rem; opacity: 0.9;">Sistema Gestor</p>
     </div>
 
     <ul class="sidebar-menu">
@@ -15,6 +15,17 @@
             <a href="/gapc/modules/grupos/index.php">
                 <i class='bx bxs-group'></i>
                 <span>Grupos</span>
+            </a>
+        </li>
+        <li>
+            <a href="/gapc/modules/grupos/ciclos_global.php">
+                <i class='bx bx-recycle'></i> <span>Ciclos</span>
+            </a>
+        </li>
+        <li>
+            <a href="/gapc/modules/miembros/index.php">
+                <i class='bx bxs-user-detail'></i>
+                <span>Miembros</span>
             </a>
         </li>
         <li>
