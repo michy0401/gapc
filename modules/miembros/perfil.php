@@ -16,6 +16,27 @@ $sql = "SELECT mc.*, u.nombre_completo, u.dui, u.telefono, u.direccion, cc.nombr
 $stmt = $pdo->prepare($sql);
 $stmt->execute([$miembro_id]);
 $p = $stmt->fetch();
+
+// ... después de $p = $stmt->fetch();
+
+// 1. CALCULAR DEUDA DE PRÉSTAMOS ACTIVA
+// Fórmula: (Lo que pidió) - (Lo que ha pagado a capital)
+$sql_prestamo = "
+    SELECT SUM(p.monto_aprobado - IFNULL((
+        SELECT SUM(monto) FROM Transaccion_Caja 
+        WHERE prestamo_id = p.id AND tipo_movimiento = 'PAGO_PRESTAMO_CAPITAL'
+    ), 0)) 
+    FROM Prestamo p
+    WHERE p.miembro_ciclo_id = ? AND p.estado = 'ACTIVO'";
+$stmt_pr = $pdo->prepare($sql_prestamo);
+$stmt_pr->execute([$miembro_id]);
+$deuda_prestamos = $stmt_pr->fetchColumn() ?: 0;
+
+// 2. CALCULAR MULTAS PENDIENTES
+$sql_multas = "SELECT SUM(monto) FROM Deuda_Multa WHERE miembro_ciclo_id = ? AND estado = 'PENDIENTE'";
+$stmt_mu = $pdo->prepare($sql_multas);
+$stmt_mu->execute([$miembro_id]);
+$deuda_multas = $stmt_mu->fetchColumn() ?: 0;
 ?>
 
 <div class="flex-between" style="margin-bottom:20px;">
@@ -50,12 +71,18 @@ $p = $stmt->fetch();
         </div>
 
         <div class="grid-2">
-            <div style="text-align:center; padding:10px; background:#FFF3E0; border-radius:8px;">
-                <span style="display:block; font-size:0.8rem;">PRÉSTAMOS ACTIVOS</span>
-                <strong>$0.00</strong> </div>
-            <div style="text-align:center; padding:10px; background:#FFEBEE; border-radius:8px;">
-                <span style="display:block; font-size:0.8rem;">MULTAS PENDIENTES</span>
-                <strong>$0.00</strong> </div>
+            <div style="text-align:center; padding:10px; background:#FFF3E0; border-radius:8px; border: 1px solid #FFE0B2;">
+                <span style="display:block; font-size:0.8rem; color: #E65100;">PRÉSTAMOS ACTIVOS</span>
+                <strong style="font-size: 1.2rem; color: #E65100;">
+                    $<?php echo number_format($deuda_prestamos, 2); ?>
+                </strong>
+            </div>
+            <div style="text-align:center; padding:10px; background:#FFEBEE; border-radius:8px; border: 1px solid #FFCDD2;">
+                <span style="display:block; font-size:0.8rem; color: #C62828;">MULTAS PENDIENTES</span>
+                <strong style="font-size: 1.2rem; color: #C62828;">
+                    $<?php echo number_format($deuda_multas, 2); ?>
+                </strong>
+            </div>
         </div>
     </div>
 </div>
