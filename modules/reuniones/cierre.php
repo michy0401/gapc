@@ -5,7 +5,7 @@ require_once '../../config/db.php';
 
 if (!isset($_GET['id'])) { header("Location: index.php"); exit; }
 $reunion_id = $_GET['id'];
-$error = ''; // Variable para capturar errores
+$error = ''; 
 
 // 1. OBTENER DATOS COMPLETOS
 $stmt = $pdo->prepare("
@@ -50,7 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $texto_acta .= "Observaciones:\n" . $observaciones;
 
     try {
-        // CORRECCIÓN AQUÍ: Usamos 'acta' en lugar de 'acta_blob'
         $sql_close = "UPDATE Reunion SET 
                       estado = 'CERRADA', 
                       total_entradas = ?, 
@@ -64,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $entradas, $salidas, $saldo_sistema, $saldo_fisico, $texto_acta, $reunion_id
         ]);
 
-        // Redirigir a ver el acta final
         echo "<script>window.location.href='ver_acta.php?id=$reunion_id';</script>";
         exit;
 
@@ -121,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             Cuente el dinero en la caja y confirme el monto final.
         </p>
 
-        <form method="POST" onsubmit="return confirm('¿Está seguro? Una vez cerrada la reunión no se pueden hacer cambios.');">
+        <form method="POST" id="form-cierre">
             
             <div class="form-group">
                 <label>Saldo Físico Real ($):</label>
@@ -136,16 +134,66 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <textarea name="observaciones" rows="4" placeholder="Ej: Todo cuadró perfectamente..."></textarea>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block" style="padding: 15px; font-size: 1.2rem; background-color: #37474F;">
-                <i class='bx bx-lock'></i> CERRAR REUNIÓN Y GENERAR ACTA
+            <button type="button" onclick="toggleModal(true)" class="btn btn-primary btn-block" style="padding: 15px; font-size: 1.2rem; background-color: #37474F;">
+                <i class='bx bx-lock-alt'></i> CERRAR REUNIÓN Y GENERAR ACTA
             </button>
         </form>
     </div>
 
 </div>
 
+<div id="modal-confirmacion" class="modal-overlay-custom">
+    <div class="modal-box">
+        <div class="text-center">
+            <i class='bx bx-error-circle' style="font-size: 4rem; color: var(--color-warning);"></i>
+            <h3>¿Está seguro de cerrar la reunión?</h3>
+            <p style="color: #666; margin-bottom: 20px;">
+                Esta acción bloqueará los movimientos y generará el acta oficial. No se podrán hacer cambios después.
+            </p>
+            
+            <div class="flex-center" style="gap: 10px;">
+                <button onclick="toggleModal(false)" class="btn btn-secondary" style="width: 120px;">Cancelar</button>
+                <button onclick="document.getElementById('form-cierre').submit()" class="btn btn-primary" style="width: 120px;">
+                    SÍ, CERRAR
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .text-right { text-align: right; }
+    
+    /* Estilos del Modal */
+    .modal-overlay-custom {
+        display: none; /* Oculto por defecto */
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-box {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
 </style>
+
+<script>
+    function toggleModal(show) {
+        const modal = document.getElementById('modal-confirmacion');
+        modal.style.display = show ? 'flex' : 'none';
+    }
+</script>
 
 <?php require_once '../../includes/footer.php'; ?>

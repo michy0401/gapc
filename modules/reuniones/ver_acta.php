@@ -6,7 +6,7 @@ require_once '../../config/db.php';
 if (!isset($_GET['id'])) { header("Location: index.php"); exit; }
 $reunion_id = $_GET['id'];
 
-// Obtener datos completos (Reunión + Grupo + Ciclo)
+// Obtener datos
 $stmt = $pdo->prepare("
     SELECT r.*, c.nombre as ciclo, g.nombre as grupo, g.distrito_id 
     FROM Reunion r
@@ -17,7 +17,7 @@ $stmt = $pdo->prepare("
 $stmt->execute([$reunion_id]);
 $r = $stmt->fetch();
 
-// Calcular diferencia (para mostrarla si existe)
+// Calcular diferencia
 $diferencia = $r['saldo_fisico_actual'] - $r['saldo_caja_actual'];
 ?>
 
@@ -26,97 +26,82 @@ $diferencia = $r['saldo_fisico_actual'] - $r['saldo_caja_actual'];
         <i class='bx bx-arrow-back'></i> Volver al Historial
     </a>
     <button onclick="window.print()" class="btn btn-primary">
-        <i class='bx bx-printer'></i> IMPRIMIR ACTA OFICIAL
+        <i class='bx bx-printer'></i> IMPRIMIR ACTA
     </button>
 </div>
 
 <div class="documento-impresion">
     
-    <div class="doc-header">
+    <div class="doc-header" style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px;">
+        <h2 style="text-transform: uppercase; margin: 0;">Acta de Cierre de Reunión</h2>
+        <p style="margin: 5px 0;">GAPC: <?php echo htmlspecialchars($r['grupo']); ?></p>
+        <p style="font-size: 0.9rem;">Ciclo: <?php echo htmlspecialchars($r['ciclo']); ?></p>
+        <small>Folio Reunión: #<?php echo str_pad($r['numero_reunion'], 3, '0', STR_PAD_LEFT); ?></small>
+    </div>
 
-        <div>
-            <h1 style="margin: 0; font-size: 1.5rem; text-transform: uppercase;">Acta de Cierre de Reunión</h1>
-            <p style="margin: 5px 0; color: #666;">Sistema de Gestión de Ahorro y Préstamo Comunitario</p>
+    <div class="grid-2" style="margin-bottom: 30px; font-size: 1rem;">
+        <div style="border: 1px solid #999; padding: 15px; border-radius: 4px;">
+            <h4 style="margin: 0 0 10px 0; border-bottom: 1px solid #ccc;">DETALLES DE SESIÓN</h4>
+            <p style="margin: 2px 0;"><strong>Fecha:</strong> <?php echo date('d/m/Y', strtotime($r['fecha'])); ?></p>
+            <p style="margin: 2px 0;"><strong>Estado:</strong> <?php echo $r['estado']; ?></p>
         </div>
-        <div style="text-align: right;">
-            <h3 style="margin: 0; color: var(--color-brand);">N° <?php echo str_pad($r['numero_reunion'], 3, '0', STR_PAD_LEFT); ?></h3>
-            <small>Folio de Control</small>
+        <div style="border: 1px solid #999; padding: 15px; border-radius: 4px;">
+            <h4 style="margin: 0 0 10px 0; border-bottom: 1px solid #ccc;">RESUMEN DE CAJA</h4>
+            <p style="margin: 2px 0;"><strong>Saldo Inicial:</strong> $<?php echo number_format($r['saldo_caja_inicial'], 2); ?></p>
+            <p style="margin: 2px 0;"><strong>Saldo Final:</strong> $<?php echo number_format($r['saldo_caja_actual'], 2); ?></p>
         </div>
     </div>
 
-    <hr style="border: 2px solid #333; margin: 20px 0;">
-
-    <div class="doc-info-grid">
-        <div>
-            <strong>GRUPO:</strong> <?php echo htmlspecialchars($r['grupo']); ?>
-        </div>
-        <div>
-            <strong>CICLO:</strong> <?php echo htmlspecialchars($r['ciclo']); ?>
-        </div>
-        <div>
-            <strong>FECHA:</strong> <?php echo date('d/m/Y', strtotime($r['fecha'])); ?>
-        </div>
-    </div>
-
-    <br>
-
-    <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; font-size: 1.1rem;">I. BALANCE DE CAJA</h3>
-    <table class="doc-table">
+    <h4 style="margin-bottom: 5px; text-transform: uppercase; background: #eee; padding: 5px; border: 1px solid #999; border-bottom: 0;">Balance de Movimientos</h4>
+    <table class="doc-table" style="width: 100%; border-collapse: collapse;">
         <thead>
-            <tr>
-                <th>CONCEPTO</th>
-                <th style="text-align: right;">MONTO ($)</th>
+            <tr style="background: #eee;">
+                <th style="border: 1px solid #999; padding: 8px;">Concepto</th>
+                <th style="border: 1px solid #999; padding: 8px; text-align: right;">Monto</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td>Saldo Inicial (Apertura)</td>
-                <td class="text-right">$<?php echo number_format($r['saldo_caja_inicial'], 2); ?></td>
+                <td style="border: 1px solid #999; padding: 8px;">(+) Total Entradas (Ahorros, Pagos, Multas)</td>
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">$<?php echo number_format($r['total_entradas'], 2); ?></td>
             </tr>
             <tr>
-                <td>(+) Total Entradas (Ahorros, Pagos, Multas)</td>
-                <td class="text-right">$<?php echo number_format($r['total_entradas'], 2); ?></td>
+                <td style="border: 1px solid #999; padding: 8px;">(-) Total Salidas (Préstamos, Gastos)</td>
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">$<?php echo number_format($r['total_salidas'], 2); ?></td>
             </tr>
-            <tr>
-                <td>(-) Total Salidas (Préstamos, Gastos)</td>
-                <td class="text-right">$<?php echo number_format($r['total_salidas'], 2); ?></td>
-            </tr>
-            <tr style="background-color: #f0f0f0; font-weight: bold;">
-                <td>(=) SALDO TEÓRICO DEL SISTEMA</td>
-                <td class="text-right">$<?php echo number_format($r['saldo_caja_actual'], 2); ?></td>
+            <tr style="background-color: #f9f9f9; font-weight: bold;">
+                <td style="border: 1px solid #999; padding: 8px;">(=) SALDO TEÓRICO EN SISTEMA</td>
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">$<?php echo number_format($r['saldo_caja_actual'], 2); ?></td>
             </tr>
         </tbody>
     </table>
 
     <br>
 
-    <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px; font-size: 1.1rem;">II. ARQUEO FÍSICO</h3>
-    <table class="doc-table">
+    <h4 style="margin-bottom: 5px; text-transform: uppercase; background: #eee; padding: 5px; border: 1px solid #999; border-bottom: 0;">Arqueo de Efectivo</h4>
+    <table class="doc-table" style="width: 100%; border-collapse: collapse;">
         <tr>
-            <td style="width: 70%;"><strong>Dinero contado en efectivo al cierre:</strong></td>
-            <td class="text-right" style="font-size: 1.2rem; font-weight: bold;">
+            <td style="border: 1px solid #999; padding: 8px; width: 70%;">Dinero contado en efectivo al cierre:</td>
+            <td style="border: 1px solid #999; padding: 8px; text-align: right; font-size: 1.1rem; font-weight: bold;">
                 $<?php echo number_format($r['saldo_fisico_actual'], 2); ?>
             </td>
         </tr>
         <?php if(abs($diferencia) > 0.00): ?>
         <tr>
-            <td style="color: var(--color-danger);">Diferencia (Sobrante/Faltante):</td>
-            <td class="text-right" style="color: var(--color-danger); font-weight: bold;">
+            <td style="border: 1px solid #999; padding: 8px; color: #D32F2F;">Diferencia (Sobrante/Faltante):</td>
+            <td style="border: 1px solid #999; padding: 8px; text-align: right; color: #D32F2F; font-weight: bold;">
                 $<?php echo number_format($diferencia, 2); ?>
             </td>
         </tr>
         <?php endif; ?>
     </table>
 
-    <br>
+    <br><br>
 
-    <div style="border: 1px solid #ccc; padding: 15px; min-height: 100px; border-radius: 4px;">
-        <strong>OBSERVACIONES Y ACUERDOS:</strong>
-        <br><br>
-        <p style="white-space: pre-wrap; color: #444;">
+    <div style="border: 1px solid #999; padding: 15px; min-height: 80px; border-radius: 4px;">
+        <strong>NOTAS / ACUERDOS:</strong>
+        <p style="white-space: pre-wrap; color: #444; margin-top: 5px;">
             <?php 
-                // Limpiamos un poco el texto generado automáticamente para no repetir los números
-                // Buscamos donde dice "Observaciones:" en el texto guardado
                 $partes = explode("Observaciones:", $r['acta']);
                 echo isset($partes[1]) ? trim($partes[1]) : "Ninguna observación registrada."; 
             ?>
@@ -125,83 +110,38 @@ $diferencia = $r['saldo_fisico_actual'] - $r['saldo_caja_actual'];
 
     <br><br><br>
 
-    <div style="display: flex; justify-content: space-between; text-align: center; margin-top: 50px;">
+    <div style="display: flex; justify-content: space-between; text-align: center; margin-top: 40px;">
         <div style="width: 30%;">
             <hr style="border: 1px solid #000;">
-            <strong>PRESIDENTA</strong>
+            <small>PRESIDENTA</small>
         </div>
         <div style="width: 30%;">
             <hr style="border: 1px solid #000;">
-            <strong>TESORERA</strong>
+            <small>TESORERA</small>
         </div>
         <div style="width: 30%;">
             <hr style="border: 1px solid #000;">
-            <strong>SECRETARIA</strong>
+            <small>SECRETARIA</small>
         </div>
     </div>
-    
-    <div style="text-align: center; margin-top: 60px;">
-        <div style="width: 40%; margin: 0 auto;">
-            <hr style="border: 1px solid #000;">
-            <strong>PROMOTORA / FACILITADOR</strong>
-        </div>
+
+    <div style="margin-top: 30px; text-align: center; font-size: 0.8rem; color: #666;">
+        <p>Documento oficial generado el <?php echo date('d/m/Y H:i'); ?>.</p>
     </div>
 
 </div>
 
 <style>
     .documento-impresion {
-        background: white;
-        padding: 40px;
-        margin: 0 auto;
-        max-width: 850px; /* Ancho carta aprox */
-        box-shadow: 0 0 15px rgba(0,0,0,0.1);
-        border-radius: 4px;
-        font-family: 'Times New Roman', serif; /* Tipografía formal */
+        background: white; padding: 40px; max-width: 850px; margin: 0 auto;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        font-family: 'Times New Roman', serif; color: #000;
     }
-
-    .doc-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-    }
-
-    .doc-info-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 20px;
-        font-size: 1.1rem;
-        text-transform: uppercase;
-    }
-
-    .doc-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-    }
-    .doc-table th, .doc-table td {
-        border: 1px solid #ddd;
-        padding: 8px 12px;
-    }
-    .doc-table th {
-        background-color: #f9f9f9;
-        font-weight: bold;
-        text-align: left;
-    }
-    .text-right { text-align: right; }
-
-    /* REGLAS DE IMPRESIÓN */
     @media print {
-        body { background: white; font-size: 12pt; }
-        .sidebar, .print-hide { display: none !important; } /* Ocultar menú y botones */
-        .main-content { margin: 0; width: 100%; padding: 0; }
-        .documento-impresion {
-            box-shadow: none;
-            padding: 0;
-            max-width: 100%;
-        }
-        /* Forzar colores de fondo en impresión (para las tablas grises) */
+        body { background: white; }
+        .print-hide, .sidebar, .topbar { display: none !important; }
+        .main-content { margin: 0; padding: 0; width: 100%; }
+        .documento-impresion { box-shadow: none; max-width: 100%; padding: 0; margin: 0; }
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 </style>

@@ -85,7 +85,7 @@ $miembros = $stmt->fetchAll();
                     $texto_volver = "Volver al Ciclo";
                 }
             ?>
-            <a href="<?php echo $link_volver; ?>" style="color: var(--text-muted); display: flex; align-items: center; gap: 5px; margin-bottom: 5px;">
+            <a href="<?php echo $link_volver; ?>" class="btn btn-secondary">
                 <i class='bx bx-arrow-back'></i> <?php echo $texto_volver; ?>
             </a>
         <?php endif; ?>

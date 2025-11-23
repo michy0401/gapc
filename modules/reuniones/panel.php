@@ -50,8 +50,8 @@ $movimientos = $stmt_log->fetchAll();
 
 <div class="flex-between" style="margin-bottom: 20px;">
     <div>
-        <a href="lista.php?ciclo_id=<?php echo $reunion['ciclo_id']; ?>" style="color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
-            <i class='bx bx-arrow-back'></i> Salir de la Reunión
+        <a href="lista.php?ciclo_id=<?php echo $reunion['ciclo_id']; ?>" class="btn btn-secondary">
+            <i class='bx bx-arrow-back' ></i> Salir de la Reunión
         </a>
         <h2 style="margin-top: 10px; color: var(--color-brand);">
             Reunión #<?php echo $reunion['numero_reunion']; ?>

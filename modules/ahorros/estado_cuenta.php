@@ -46,14 +46,21 @@ $movs = $stmt_h->fetchAll();
         <p style="font-size: 0.9rem;">Periodo: <?php echo htmlspecialchars($s['ciclo']); ?></p>
     </div>
 
-    <div style="border: 1px solid #999; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
-        <h4 style="margin: 0 0 10px 0; border-bottom: 1px solid #ccc;">TITULAR DE LA CUENTA</h4>
-        <div style="display: grid; grid-template-columns: 1fr 1fr;">
+    <div class="grid-2" style="margin-bottom: 30px; font-size: 1rem;">
+        <div style="border: 1px solid #999; padding: 15px; border-radius: 4px;">
+            <h4 style="margin: 0 0 10px 0; border-bottom: 1px solid #ccc;">TITULAR DE LA CUENTA</h4>
             <p style="margin: 2px 0;"><strong>Nombre:</strong> <?php echo htmlspecialchars($s['nombre_completo']); ?></p>
             <p style="margin: 2px 0;"><strong>DUI:</strong> <?php echo htmlspecialchars($s['dui']); ?></p>
         </div>
+        <div style="border: 1px solid #999; padding: 15px; border-radius: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background-color: #f9f9f9;">
+            <small>SALDO DISPONIBLE</small>
+            <div style="font-size: 2rem; font-weight: bold;">
+                $<?php echo number_format($s['saldo_ahorros'], 2); ?>
+            </div>
+        </div>
     </div>
 
+    <h4 style="margin-bottom: 5px; text-transform: uppercase; background: #eee; padding: 5px; border: 1px solid #999; border-bottom: 0;">Historial de Movimientos</h4>
     <table class="doc-table" style="width: 100%; border-collapse: collapse;">
         <thead>
             <tr style="background: #eee;">
@@ -84,19 +91,19 @@ $movs = $stmt_h->fetchAll();
                 }
             ?>
             <tr>
-                <td style="border: 1px solid #999; padding: 5px;">
+                <td style="border: 1px solid #999; padding: 8px;">
                     <?php echo date('d/m/Y', strtotime($m['fecha_mov'])); ?>
                 </td>
-                <td style="border: 1px solid #999; padding: 5px;">
+                <td style="border: 1px solid #999; padding: 8px;">
                     #<?php echo $m['numero_reunion']; ?>
                 </td>
-                <td style="border: 1px solid #999; padding: 5px; text-align: right; color: #D32F2F;">
+                <td style="border: 1px solid #999; padding: 8px; text-align: right; color: #D32F2F;">
                     <?php echo $ret; ?>
                 </td>
-                <td style="border: 1px solid #999; padding: 5px; text-align: right; color: #388E3C;">
+                <td style="border: 1px solid #999; padding: 8px; text-align: right; color: #388E3C;">
                     <?php echo $dep; ?>
                 </td>
-                <td style="border: 1px solid #999; padding: 5px; text-align: right; font-weight: bold;">
+                <td style="border: 1px solid #999; padding: 8px; text-align: right; font-weight: bold;">
                     $<?php echo number_format($saldo_temp, 2); ?>
                 </td>
             </tr>
@@ -123,11 +130,11 @@ $movs = $stmt_h->fetchAll();
     <div style="text-align: center; width: 50%; margin: 0 auto;">
         <hr style="border: 1px solid #000;">
         <p style="margin: 5px 0;"><strong><?php echo htmlspecialchars($s['nombre_completo']); ?></strong></p>
-        <small>Firma de Conformidad</small>
+        <small>Firma de Conformidad del Socio</small>
     </div>
 
     <div style="margin-top: 30px; text-align: center; font-size: 0.8rem; color: #666;">
-        <p>Generado el <?php echo date('d/m/Y H:i'); ?>.</p>
+        <p>Documento oficial generado el <?php echo date('d/m/Y H:i'); ?>.</p>
     </div>
 
 </div>
@@ -142,7 +149,7 @@ $movs = $stmt_h->fetchAll();
         body { background: white; }
         .print-hide, .sidebar, .topbar { display: none !important; }
         .main-content { margin: 0; padding: 0; width: 100%; }
-        .documento-impresion { box-shadow: none; max-width: 100%; padding: 0; }
+        .documento-impresion { box-shadow: none; max-width: 100%; padding: 0; margin: 0; }
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 </style>

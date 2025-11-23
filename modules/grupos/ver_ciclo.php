@@ -43,9 +43,10 @@ $stats = $stmt_s->fetch();
 
 <div class="flex-between" style="margin-bottom: 20px;">
     <div>
-        <a href="<?php echo $link_volver; ?>" style="color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+        <a href="<?php echo $link_volver; ?>" class="btn btn-secondary">
             <i class='bx bx-arrow-back'></i> <?php echo $texto_volver; ?>
         </a>
+            
         
         <h2 style="margin-top:10px;">Detalle de Ciclo Operativo</h2>
         <p style="color: var(--color-brand);">

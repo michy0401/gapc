@@ -22,8 +22,8 @@ $siguiente_numero = count($reuniones) + 1;
 
 <div class="flex-between" style="margin-bottom: 20px;">
     <div>
-        <a href="index.php" style="color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
-            <i class='bx bx-arrow-back'></i> Volver a Selección
+        <a href="index.php" class="btn btn-secondary">
+            <i class='bx bx-arrow-back'></i> Volver a Seleccion
         </a>
         <h2 style="margin-top: 5px;">Reuniones: <?php echo htmlspecialchars($ciclo['grupo']); ?></h2>
     </div>
