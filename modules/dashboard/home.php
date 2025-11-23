@@ -24,6 +24,16 @@
         </div>
     </a>
 
+    <a href="../ahorros/index.php" class="card-compact" style="border-left-color: #673AB7;">
+        <div class="card-icon" style="background-color: #EDE7F6; color: #673AB7;">
+            <i class='bx bxs-coin-stack'></i>
+        </div>
+        <div class="card-info">
+            <h3>Ahorros</h3>
+            <p>Cuentas individuales</p>
+        </div>
+    </a>
+
     <a href="../prestamos/index.php" class="card-compact" style="border-left-color: var(--color-warning);">
         <div class="card-icon bg-orange">
             <i class='bx bxs-bank'></i>

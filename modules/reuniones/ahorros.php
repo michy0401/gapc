@@ -19,37 +19,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $pdo->beginTransaction();
 
         // Recorremos los arrays enviados
-        // $_POST['ahorro'][id_miembro] = monto
-        // $_POST['otros'][id_miembro] = monto
-        
-        $total_ingresado = 0;
-
         foreach ($_POST['ahorro'] as $miembro_id => $monto_ahorro) {
-            $monto_ahorro = floatval($monto_ahorro); // Asegurar que es número
+            $monto_ahorro = floatval($monto_ahorro); 
             $monto_otros = floatval($_POST['otros'][$miembro_id]);
+            
+            // Capturamos la observación escrita por el usuario
+            $nota_usuario = trim($_POST['observacion'][$miembro_id]);
 
-            // A. PROCESAR AHORRO (Si es mayor a 0)
+            // A. PROCESAR AHORRO
             if ($monto_ahorro > 0) {
-                // 1. Registrar Transacción
-                $sql_t1 = "INSERT INTO Transaccion_Caja (reunion_id, miembro_ciclo_id, tipo_movimiento, monto, observacion) 
-                           VALUES (?, ?, 'AHORRO', ?, 'Ahorro Ordinario')";
-                $pdo->prepare($sql_t1)->execute([$reunion_id, $miembro_id, $monto_ahorro]);
+                // Si el usuario escribió nota, la agregamos. Si no, texto default.
+                $concepto = $nota_usuario ? "Ahorro - " . $nota_usuario : "Ahorro Ordinario";
 
-                // 2. Sumar a la cuenta personal del socio
+                // 1. Transacción
+                $sql_t1 = "INSERT INTO Transaccion_Caja (reunion_id, miembro_ciclo_id, tipo_movimiento, monto, observacion) 
+                           VALUES (?, ?, 'AHORRO', ?, ?)";
+                $pdo->prepare($sql_t1)->execute([$reunion_id, $miembro_id, $monto_ahorro, $concepto]);
+
+                // 2. Saldo Socio
                 $sql_upd = "UPDATE Miembro_Ciclo SET saldo_ahorros = saldo_ahorros + ? WHERE id = ?";
                 $pdo->prepare($sql_upd)->execute([$monto_ahorro, $miembro_id]);
-                
-                $total_ingresado += $monto_ahorro;
             }
 
-            // B. PROCESAR OTROS INGRESOS (Rifas, etc)
+            // B. PROCESAR OTROS INGRESOS
             if ($monto_otros > 0) {
-                // Solo registramos transacción (es ganancia del grupo, no saldo del socio)
+                // Si escribió nota, la usamos aquí también.
+                $concepto_otros = $nota_usuario ? "Otros - " . $nota_usuario : "Rifas/Otros Ingresos";
+
                 $sql_t2 = "INSERT INTO Transaccion_Caja (reunion_id, miembro_ciclo_id, tipo_movimiento, monto, observacion) 
-                           VALUES (?, ?, 'INGRESO_EXTRA', ?, 'Rifas/Otros')";
-                $pdo->prepare($sql_t2)->execute([$reunion_id, $miembro_id, $monto_otros]);
-                
-                $total_ingresado += $monto_otros;
+                           VALUES (?, ?, 'INGRESO_EXTRA', ?, ?)";
+                $pdo->prepare($sql_t2)->execute([$reunion_id, $miembro_id, $monto_otros, $concepto_otros]);
             }
         }
 
@@ -63,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// 3. OBTENER MIEMBROS PARA LA LISTA
+// 3. OBTENER MIEMBROS
 $stmt_m = $pdo->prepare("SELECT mc.id, u.nombre_completo, mc.saldo_ahorros 
                          FROM Miembro_Ciclo mc 
                          JOIN Usuario u ON mc.usuario_id = u.id 
@@ -88,14 +87,16 @@ $miembros = $stmt_m->fetchAll();
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Socia</th>
-                        <th>Acumulado</th>
-                        <th style="width: 200px; background: #E8F5E9; color: #2E7D32;">
+                        <th style="width: 300px;">Socia</th>
+                        <th style="width: 200px;">Acumulado</th>
+                        <th style="width: 300px;">Observación (Opcional)</th>
+                        <th style="width: 150px; background: #E8F5E9; color: #2E7D32;">
                             Ahorro Hoy ($)
                         </th>
-                        <th style="width: 200px; background: #FFF3E0; color: #EF6C00;">
+                        <th style="width: 150px; background: #FFF3E0; color: #EF6C00;">
                             Otros/Rifas ($)
                         </th>
+                        
                     </tr>
                 </thead>
                 <tbody>
@@ -106,6 +107,12 @@ $miembros = $stmt_m->fetchAll();
                             </td>
                             <td style="color: var(--text-muted);">
                                 $<?php echo number_format($m['saldo_ahorros'], 2); ?>
+                            </td>
+                            <td>
+                                <input type="text" 
+                                       name="observacion[<?php echo $m['id']; ?>]" 
+                                       class="input-texto"
+                                       placeholder="Ej: Reposición, Billete, etc.">
                             </td>
                             
                             <td style="background: #F1F8E9;">
@@ -123,6 +130,8 @@ $miembros = $stmt_m->fetchAll();
                                        class="input-dinero"
                                        placeholder="0.00">
                             </td>
+
+                            
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -147,10 +156,25 @@ $miembros = $stmt_m->fetchAll();
         text-align: right;
         font-weight: bold;
         border: 1px solid #ccc;
+        padding: 8px;
+        border-radius: 4px;
     }
     .input-dinero:focus {
         background: #fff;
         border-color: var(--color-success);
+        outline: none;
+    }
+    .input-texto {
+        text-align: left;
+        border: 1px solid #ddd;
+        padding: 8px;
+        font-size: 0.9rem;
+        border-radius: 4px;
+        color: #555;
+    }
+    .input-texto:focus {
+        border-color: var(--color-brand);
+        background: #fff;
     }
 </style>
 

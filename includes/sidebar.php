@@ -41,6 +41,11 @@
             </a>
         </li>
         <li>
+            <a href="/gapc/modules/ahorros/index.php">
+                <i class='bx bxs-coin-stack'></i> <span>Ahorros</span>
+            </a>
+        </li>
+        <li>
             <a href="/gapc/modules/reportes/index.php">
                 <i class='bx bxs-report'></i>
                 <span>Reportes</span>

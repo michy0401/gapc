@@ -6,7 +6,7 @@ require_once '../../config/db.php';
 if (!isset($_GET['id'])) { header("Location: index.php"); exit; }
 $reunion_id = $_GET['id'];
 
-// 1. OBTENER DATOS DE LA REUNIÓN
+// 1. DATOS REUNIÓN
 $stmt = $pdo->prepare("
     SELECT r.*, c.nombre as nombre_ciclo, g.nombre as nombre_grupo, c.id as ciclo_id
     FROM Reunion r
@@ -17,8 +17,7 @@ $stmt = $pdo->prepare("
 $stmt->execute([$reunion_id]);
 $reunion = $stmt->fetch();
 
-// 2. CALCULAR FLUJO DE CAJA EN TIEMPO REAL
-// Sumamos todo lo que ha entrado y salido en ESTA reunión específica
+// 2. CÁLCULOS (TOTALES)
 $sql_balance = "SELECT 
     SUM(CASE WHEN tipo_movimiento IN ('AHORRO','PAGO_PRESTAMO_CAPITAL','PAGO_PRESTAMO_INTERES','PAGO_MULTA','INGRESO_EXTRA') THEN monto ELSE 0 END) as entradas,
     SUM(CASE WHEN tipo_movimiento IN ('RETIRO_AHORRO','DESEMBOLSO_PRESTAMO','GASTO_OPERATIVO') THEN monto ELSE 0 END) as salidas
@@ -32,11 +31,21 @@ $total_entradas = $balance['entradas'] ?: 0;
 $total_salidas = $balance['salidas'] ?: 0;
 $saldo_actual_calculado = $reunion['saldo_caja_inicial'] + $total_entradas - $total_salidas;
 
-// Actualizamos el saldo en la base de datos para mantenerlo sincronizado
 if ($reunion['estado'] == 'ABIERTA') {
     $pdo->prepare("UPDATE Reunion SET saldo_caja_actual = ? WHERE id = ?")
         ->execute([$saldo_actual_calculado, $reunion_id]);
 }
+
+// 3. BITÁCORA (DETALLE)
+$sql_log = "SELECT t.*, u.nombre_completo 
+            FROM Transaccion_Caja t
+            LEFT JOIN Miembro_Ciclo mc ON t.miembro_ciclo_id = mc.id
+            LEFT JOIN Usuario u ON mc.usuario_id = u.id
+            WHERE t.reunion_id = ?
+            ORDER BY t.id DESC";
+$stmt_log = $pdo->prepare($sql_log);
+$stmt_log->execute([$reunion_id]);
+$movimientos = $stmt_log->fetchAll();
 ?>
 
 <div class="flex-between" style="margin-bottom: 20px;">
@@ -54,7 +63,7 @@ if ($reunion['estado'] == 'ABIERTA') {
     </div>
 
     <div style="text-align: right; background: white; padding: 15px 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 5px solid var(--color-success);">
-        <small style="color: #666; text-transform: uppercase; font-weight: bold;">Dinero en Caja (Físico)</small>
+        <small style="color: #666; text-transform: uppercase; font-weight: bold;">Dinero en Caja</small>
         <div style="font-size: 2rem; font-weight: bold; color: var(--color-success);">
             $<?php echo number_format($saldo_actual_calculado, 2); ?>
         </div>
@@ -62,50 +71,92 @@ if ($reunion['estado'] == 'ABIERTA') {
 </div>
 
 <div class="grid-dashboard">
-    
     <a href="asistencia.php?id=<?php echo $reunion_id; ?>" class="card-compact" style="border-left-color: #2196F3;">
         <div class="card-icon" style="background: #E3F2FD; color: #2196F3;">
             <i class='bx bx-user-check'></i>
         </div>
         <div class="card-info">
             <h3>1. Asistencia</h3>
-            <p>Registrar presentes y multas</p>
+            <p>Registrar presentes</p>
         </div>
     </a>
-
     <a href="multas.php?id=<?php echo $reunion_id; ?>" class="card-compact" style="border-left-color: var(--color-danger);">
         <div class="card-icon bg-red">
             <i class='bx bx-error-circle'></i>
         </div>
         <div class="card-info">
             <h3>2. Multas</h3>
-            <p>Cobrar deudas por faltas</p>
+            <p>Cobrar deudas</p>
         </div>
     </a>
-
     <a href="ahorros.php?id=<?php echo $reunion_id; ?>" class="card-compact" style="border-left-color: var(--color-success);">
         <div class="card-icon bg-green">
             <i class='bx bx-coin-stack'></i>
         </div>
         <div class="card-info">
             <h3>3. Ahorros</h3>
-            <p>Registrar depósitos</p>
+            <p>Recibir depósitos</p>
         </div>
     </a>
-
     <a href="prestamos.php?id=<?php echo $reunion_id; ?>" class="card-compact" style="border-left-color: var(--color-warning);">
         <div class="card-icon bg-orange">
             <i class='bx bx-money'></i>
         </div>
         <div class="card-info">
             <h3>4. Préstamos</h3>
-            <p>Cobros y Desembolsos</p>
+            <p>Créditos y Pagos</p>
         </div>
     </a>
-
 </div>
 
 <br>
+
+<div class="card">
+    <h3><i class='bx bx-list-check'></i> Bitácora de Movimientos en Vivo</h3>
+    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+        <?php if(count($movimientos) > 0): ?>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Socia</th>
+                        <th>Concepto</th>
+                        <th style="text-align: center;">Entrada ($)</th>
+                        <th style="text-align: center;">Salida ($)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($movimientos as $m): 
+                        $es_entrada = in_array($m['tipo_movimiento'], ['AHORRO','PAGO_PRESTAMO_CAPITAL','PAGO_PRESTAMO_INTERES','PAGO_MULTA','INGRESO_EXTRA']);
+                        $tipo_txt = str_replace('_', ' ', $m['tipo_movimiento']);
+                    ?>
+                        <tr>
+                            <td>
+                                <strong>
+                                    <?php echo $m['nombre_completo'] ? htmlspecialchars($m['nombre_completo']) : 'Grupo (General)'; ?>
+                                </strong>
+                            </td>
+                            <td>
+                                <small style="font-weight: bold; color: #666;"><?php echo $tipo_txt; ?></small>
+                                <br>
+                                <small style="color: #999;"><?php echo htmlspecialchars($m['observacion']); ?></small>
+                            </td>
+                            
+                            <td style="text-align: center; color: var(--color-success);">
+                                <?php echo $es_entrada ? '+ $'.number_format($m['monto'], 2) : ''; ?>
+                            </td>
+
+                            <td style="text-align: center; color: var(--color-danger);">
+                                <?php echo !$es_entrada ? '- $'.number_format($m['monto'], 2) : ''; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <p class="text-center" style="color: #999; padding: 20px;">Aún no hay movimientos registrados en esta sesión.</p>
+        <?php endif; ?>
+    </div>
+</div>
 
 <div class="card">
     <h3>Resumen de la Sesión</h3>

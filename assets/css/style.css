@@ -287,6 +287,7 @@ input:focus, select:focus {
 .card-info h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
 .card-info p { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
 
+
 /* =========================================
    5. RESPONSIVE MÓVIL
    ========================================= */
