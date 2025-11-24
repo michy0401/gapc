@@ -303,3 +303,65 @@ input:focus, select:focus {
     .overlay.active { display: block; }
     .user-name { display: none; } /* Ocultar nombre en móvil */
 }
+
+/* =========================================
+   6. ESTILOS ESPECÍFICOS DEL LOGIN
+   ========================================= */
+body.login-page {
+    background-color: var(--color-brand); /* Fondo Azul Institucional */
+    background-image: linear-gradient(135deg, var(--color-brand) 0%, #0D47A1 100%); /* Degradado sutil */
+    display: flex;
+    align-items: center;     /* Centrar verticalmente */
+    justify-content: center; /* Centrar horizontalmente */
+    height: 100vh;           /* Ocupar toda la altura de la pantalla */
+    margin: 0;
+}
+
+.login-card {
+    background: white;
+    padding: 40px;
+    width: 90%;
+    max-width: 400px;       /* Que no sea ni muy ancho ni muy angosto */
+    border-radius: 16px;    /* Bordes más suaves */
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* Sombra de elevación */
+    text-align: center;
+}
+
+.login-header {
+    margin-bottom: 30px;
+}
+
+.login-header h1 {
+    color: var(--color-brand);
+    font-size: 2rem;
+    margin: 0;
+    font-weight: 800;
+}
+
+.login-header p {
+    color: var(--text-muted);
+    margin-top: 5px;
+    font-size: 0.95rem;
+}
+
+.login-input {
+    background-color: #F5F7FA;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.login-input:focus {
+    background-color: white;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 4px rgba(26, 35, 126, 0.1);
+}
+
+/* Animación de entrada suave */
+.login-card {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
