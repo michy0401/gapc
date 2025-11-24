@@ -12,44 +12,75 @@ $stmt_c->execute([$ciclo_id]);
 $ciclo = $stmt_c->fetch();
 
 // 2. CÁLCULOS FINANCIEROS
+
 // A. Ahorros Totales (Pasivo/Capital)
 $stmt_ahorros = $pdo->prepare("SELECT SUM(saldo_ahorros) FROM Miembro_Ciclo WHERE ciclo_id = ?");
 $stmt_ahorros->execute([$ciclo_id]);
 $total_ahorros = $stmt_ahorros->fetchColumn() ?: 0;
 
-// B. Dinero en Caja (Activo Corriente)
-$stmt_caja = $pdo->prepare("SELECT saldo_caja_actual FROM Reunion WHERE ciclo_id = ? ORDER BY id DESC LIMIT 1");
-$stmt_caja->execute([$ciclo_id]);
-$caja_actual = $stmt_caja->fetchColumn() ?: 0;
+// B. Dinero en Caja (Activo Corriente) - CÁLCULO DINÁMICO REAL
+// Sumar Saldo Inicial
+$stmt_ini = $pdo->prepare("SELECT saldo_caja_inicial FROM Reunion WHERE ciclo_id = ? ORDER BY id ASC LIMIT 1");
+$stmt_ini->execute([$ciclo_id]);
+$saldo_inicial_historico = $stmt_ini->fetchColumn() ?: 0;
+
+// Sumar Entradas
+$sql_entradas = "SELECT SUM(monto) FROM Transaccion_Caja tc JOIN Reunion r ON tc.reunion_id = r.id 
+                 WHERE r.ciclo_id = ? 
+                 AND tc.tipo_movimiento IN ('AHORRO','PAGO_PRESTAMO_CAPITAL','PAGO_PRESTAMO_INTERES','PAGO_MULTA','INGRESO_EXTRA')";
+$stmt_ent = $pdo->prepare($sql_entradas);
+$stmt_ent->execute([$ciclo_id]);
+$total_entradas = $stmt_ent->fetchColumn() ?: 0;
+
+// Sumar Salidas
+$sql_salidas = "SELECT SUM(monto) FROM Transaccion_Caja tc JOIN Reunion r ON tc.reunion_id = r.id 
+                WHERE r.ciclo_id = ? 
+                AND tc.tipo_movimiento IN ('RETIRO_AHORRO','DESEMBOLSO_PRESTAMO','GASTO_OPERATIVO')";
+$stmt_sal = $pdo->prepare($sql_salidas);
+$stmt_sal->execute([$ciclo_id]);
+$total_salidas = $stmt_sal->fetchColumn() ?: 0;
+
+$caja_actual = $saldo_inicial_historico + $total_entradas - $total_salidas;
+
 
 // C. Cartera de Préstamos (Activo Por Cobrar)
-// (Monto Prestado - Capital Pagado)
+// NOTA: Si pagaste todo, esto debe dar 0. Si deben, debe dar > 0.
 $sql_cartera = "
-    SELECT SUM(p.monto_aprobado - IFNULL((SELECT SUM(monto) FROM Transaccion_Caja WHERE prestamo_id = p.id AND tipo_movimiento='PAGO_PRESTAMO_CAPITAL'), 0)) 
+    SELECT SUM(
+        GREATEST(0, p.monto_aprobado - IFNULL((SELECT SUM(monto) FROM Transaccion_Caja WHERE prestamo_id = p.id AND tipo_movimiento='PAGO_PRESTAMO_CAPITAL'), 0))
+    ) 
     FROM Prestamo p 
     JOIN Miembro_Ciclo mc ON p.miembro_ciclo_id = mc.id
-    WHERE mc.ciclo_id = ? AND p.estado = 'ACTIVO'";
+    WHERE mc.ciclo_id = ? AND p.estado IN ('ACTIVO', 'MORA', 'FINALIZADO')";
 $stmt_cartera = $pdo->prepare($sql_cartera);
 $stmt_cartera->execute([$ciclo_id]);
 $dinero_en_calle = $stmt_cartera->fetchColumn() ?: 0;
 
-// D. Ganancias (Utilidad del Ejercicio)
-// Ingresos (Intereses+Multas) - Gastos
-$sql_ganancia = "
-    SELECT SUM(monto) FROM Transaccion_Caja tc
-    JOIN Reunion r ON tc.reunion_id = r.id
-    WHERE r.ciclo_id = ? 
-    AND tc.tipo_movimiento IN ('PAGO_PRESTAMO_INTERES', 'PAGO_MULTA', 'INGRESO_EXTRA')";
-$total_ganancia = $pdo->prepare($sql_ganancia)->execute([$ciclo_id]) ? $pdo->prepare($sql_ganancia)->fetchColumn() : 0;
 
-$sql_gastos = "
-    SELECT SUM(monto) FROM Transaccion_Caja tc
-    JOIN Reunion r ON tc.reunion_id = r.id
-    WHERE r.ciclo_id = ? 
-    AND tc.tipo_movimiento = 'GASTO_OPERATIVO'";
-$total_gastos = $pdo->prepare($sql_gastos)->execute([$ciclo_id]) ? $pdo->prepare($sql_gastos)->fetchColumn() : 0;
+// D. Ganancias (CORREGIDO AQUÍ) 🚨
+// Antes fallaba porque estaba en una línea. Ahora lo separamos.
+$sql_ganancia = "SELECT SUM(t.monto) 
+                 FROM Transaccion_Caja t 
+                 JOIN Reunion r ON t.reunion_id = r.id 
+                 WHERE r.ciclo_id = ? 
+                 AND t.tipo_movimiento IN ('PAGO_PRESTAMO_INTERES', 'PAGO_MULTA', 'INGRESO_EXTRA')";
+$stmt_gan = $pdo->prepare($sql_ganancia);
+$stmt_gan->execute([$ciclo_id]);
+$total_ganancia = $stmt_gan->fetchColumn(); 
+$total_ganancia = $total_ganancia ? $total_ganancia : 0;
 
-$utilidad_neta = ($total_ganancia ?: 0) - ($total_gastos ?: 0);
+// Gastos
+$sql_gastos = "SELECT SUM(t.monto) 
+               FROM Transaccion_Caja t 
+               JOIN Reunion r ON t.reunion_id = r.id 
+               WHERE r.ciclo_id = ? 
+               AND t.tipo_movimiento = 'GASTO_OPERATIVO'";
+$stmt_gas = $pdo->prepare($sql_gastos);
+$stmt_gas->execute([$ciclo_id]);
+$total_gastos = $stmt_gas->fetchColumn();
+$total_gastos = $total_gastos ? $total_gastos : 0;
+
+$utilidad_neta = $total_ganancia - $total_gastos;
 
 // E. Totales Generales
 $total_activos = $caja_actual + $dinero_en_calle;
