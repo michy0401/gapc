@@ -3,10 +3,10 @@
 require_once '../../includes/header.php';
 require_once '../../config/db.php';
 
-// Filtrar según rol
 $rol = $_SESSION['rol_usuario'];
 $uid = $_SESSION['user_id'];
 
+// Listar Ciclos Activos
 $sql = "SELECT c.id, c.nombre, g.nombre as grupo, c.fecha_inicio 
         FROM Ciclo c 
         JOIN Grupo g ON c.grupo_id = g.id 
@@ -22,27 +22,45 @@ $ciclos = $pdo->query($sql)->fetchAll();
 
 <div class="flex-between" style="margin-bottom: 20px;">
     <div>
-        <h2>Reportes y Transparencia</h2>
-        <p style="color: var(--text-muted);">Seleccione un ciclo operativo para ver sus estados financieros.</p>
+        <h2>Centro de Reportes</h2>
+        <p style="color: var(--text-muted);">Seleccione el tipo de informe que desea generar.</p>
     </div>
 </div>
 
 <?php if (count($ciclos) > 0): ?>
     <div class="grid-2">
         <?php foreach($ciclos as $c): ?>
-            <div class="card" style="border-left: 5px solid var(--color-brand); transition: transform 0.2s;">
+            <div class="card" style="border-left: 5px solid var(--color-danger);">
                 <div class="flex-between">
                     <h3 style="margin:0; color: var(--color-brand);"><?php echo htmlspecialchars($c['grupo']); ?></h3>
                 </div>
-                <p style="color: var(--text-muted); margin-bottom: 15px;">
+                <p style="color: var(--text-muted); margin-bottom: 20px;">
                     <?php echo htmlspecialchars($c['nombre']); ?>
                     <br>
                     <small>Inicio: <?php echo date('d/m/Y', strtotime($c['fecha_inicio'])); ?></small>
                 </p>
 
-                <a href="balance.php?ciclo_id=<?php echo $c['id']; ?>" class="btn btn-primary btn-block">
-                    <i class='bx bx-pie-chart-alt-2'></i> VER BALANCE GENERAL
-                </a>
+                <div style="display: grid; gap: 10px;">
+                    <a href="balance.php?ciclo_id=<?php echo $c['id']; ?>" class="btn btn-secondary btn-block" style="text-align: left;">
+                        <i class='bx bx-pie-chart-alt-2'></i> Balance General
+                    </a>
+                    
+                    <a href="cartera.php?ciclo_id=<?php echo $c['id']; ?>" class="btn btn-secondary btn-block" style="text-align: left;">
+                        <i class='bx bx-money'></i> Cartera de Préstamos
+                    </a>
+
+                    <a href="ahorros_lista.php?ciclo_id=<?php echo $c['id']; ?>" class="btn btn-secondary btn-block" style="text-align: left;">
+                        <i class='bx bx-list-ol'></i> Sábana de Ahorros
+                    </a>
+
+                    <a href="caja.php?ciclo_id=<?php echo $c['id']; ?>" class="btn btn-secondary btn-block" style="text-align: left;">
+                        <i class='bx bx-transfer'></i> Historial de Flujo de Caja
+                    </a>
+
+                    <a href="utilidades.php?ciclo_id=<?php echo $c['id']; ?>" class="btn btn-secondary btn-block" style="text-align: left;">
+                        <i class='bx bx-money-withdraw'></i> Distribución de Utilidades
+                    </a>
+                </div>
             </div>
         <?php endforeach; ?>
     </div>

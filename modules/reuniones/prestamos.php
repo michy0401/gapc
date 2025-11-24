@@ -68,26 +68,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $mensaje = "Préstamo entregado correctamente.";
         }
 
-        // --- CASO B: PAGAR PRÉSTAMO ---
+        // --- CASO B: RECIBIR PAGO (ENTRA DINERO) ---
         if ($_POST['accion'] == 'pagar_prestamo') {
             $prestamo_id = $_POST['prestamo_id'];
             $pago_capital = floatval($_POST['pago_capital']);
             $pago_interes = floatval($_POST['pago_interes']);
             
-            $p_info = $pdo->query("SELECT miembro_ciclo_id FROM Prestamo WHERE id = $prestamo_id")->fetch();
+            // Obtener info del prestamo para saber quién paga y CUÁNTO DEBÍA
+            $p_info = $pdo->prepare("SELECT miembro_ciclo_id, monto_aprobado FROM Prestamo WHERE id = ?");
+            $p_info->execute([$prestamo_id]);
+            $datos_prestamo = $p_info->fetch();
 
             if ($pago_capital > 0) {
                 $sql_cap = "INSERT INTO Transaccion_Caja (reunion_id, miembro_ciclo_id, prestamo_id, tipo_movimiento, monto, observacion) 
                             VALUES (?, ?, ?, 'PAGO_PRESTAMO_CAPITAL', ?, 'Abono a Capital')";
-                $pdo->prepare($sql_cap)->execute([$reunion_id, $p_info['miembro_ciclo_id'], $prestamo_id, $pago_capital]);
+                $pdo->prepare($sql_cap)->execute([$reunion_id, $datos_prestamo['miembro_ciclo_id'], $prestamo_id, $pago_capital]);
             }
 
             if ($pago_interes > 0) {
                 $sql_int = "INSERT INTO Transaccion_Caja (reunion_id, miembro_ciclo_id, prestamo_id, tipo_movimiento, monto, observacion) 
                             VALUES (?, ?, ?, 'PAGO_PRESTAMO_INTERES', ?, 'Pago de Interés')";
-                $pdo->prepare($sql_int)->execute([$reunion_id, $p_info['miembro_ciclo_id'], $prestamo_id, $pago_interes]);
+                $pdo->prepare($sql_int)->execute([$reunion_id, $datos_prestamo['miembro_ciclo_id'], $prestamo_id, $pago_interes]);
             }
-            $mensaje = "Pago registrado correctamente.";
+
+            // === 🚨 CORRECCIÓN: VERIFICAR SI SE LIQUIDÓ EL PRÉSTAMO ===
+            
+            // 1. Sumar todo lo pagado a capital hasta ahora (incluyendo el pago de este instante)
+            $stmt_pagado = $pdo->prepare("SELECT SUM(monto) FROM Transaccion_Caja WHERE prestamo_id = ? AND tipo_movimiento = 'PAGO_PRESTAMO_CAPITAL'");
+            $stmt_pagado->execute([$prestamo_id]);
+            $total_pagado = $stmt_pagado->fetchColumn() ?: 0;
+
+            // 2. Comparar con el monto original (con un margen de error de 1 centavo por decimales)
+            $saldo_pendiente = $datos_prestamo['monto_aprobado'] - $total_pagado;
+
+            if ($saldo_pendiente <= 0.01) {
+                // ¡SE ACABÓ LA DEUDA! Actualizamos el estado a FINALIZADO
+                $pdo->prepare("UPDATE Prestamo SET estado = 'FINALIZADO' WHERE id = ?")->execute([$prestamo_id]);
+                $mensaje = "Pago registrado. ¡El préstamo ha sido LIQUIDADO totalmente!";
+            } else {
+                $mensaje = "Pago registrado correctamente. Saldo restante: $" . number_format($saldo_pendiente, 2);
+            }
         }
 
         $pdo->commit();

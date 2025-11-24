@@ -123,6 +123,17 @@ $stats = $stmt_s->fetch();
                 </span>
                 <small style="display:block;">Ahorrado</small>
             </div>
+            <br>
+            <?php if($ciclo['estado'] == 'ACTIVO'): ?>
+                <a href="cierre_ciclo.php?ciclo_id=<?php echo $ciclo_id; ?>" class="btn btn-danger btn-block" style="margin-top: 15px;">
+                    <i class='bx bx-stop-circle'></i> CERRAR Y LIQUIDAR CICLO
+                </a>
+            <?php elseif($ciclo['estado'] == 'LIQUIDADO'): ?>
+                <a href="acta_cierre.php?ciclo_id=<?php echo $ciclo_id; ?>" class="btn btn-secondary btn-block" style="margin-top: 15px;">
+                    <i class='bx bxs-file-pdf'></i> VER ACTA DE LIQUIDACIÓN
+                </a>
+            <?php endif; ?>
+
         </div>
     </div>
 

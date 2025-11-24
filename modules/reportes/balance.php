@@ -11,21 +11,19 @@ $stmt_c = $pdo->prepare("SELECT c.*, g.nombre as grupo FROM Ciclo c JOIN Grupo g
 $stmt_c->execute([$ciclo_id]);
 $ciclo = $stmt_c->fetch();
 
-// 2. CÁLCULOS MACRO (SQL POWER)
-// A. Ahorros Totales (Capital Social)
+// 2. CÁLCULOS FINANCIEROS
+// A. Ahorros Totales (Pasivo/Capital)
 $stmt_ahorros = $pdo->prepare("SELECT SUM(saldo_ahorros) FROM Miembro_Ciclo WHERE ciclo_id = ?");
 $stmt_ahorros->execute([$ciclo_id]);
 $total_ahorros = $stmt_ahorros->fetchColumn() ?: 0;
 
-// B. Dinero en Caja (Efectivo disponible)
-// Buscamos la última reunión cerrada para tener el saldo físico exacto, 
-// o calculamos si hay una abierta.
+// B. Dinero en Caja (Activo Corriente)
 $stmt_caja = $pdo->prepare("SELECT saldo_caja_actual FROM Reunion WHERE ciclo_id = ? ORDER BY id DESC LIMIT 1");
 $stmt_caja->execute([$ciclo_id]);
 $caja_actual = $stmt_caja->fetchColumn() ?: 0;
 
-// C. Cartera de Préstamos (Dinero en la calle)
-// Sumamos (Monto Prestado - Capital Pagado) de todos los préstamos activos
+// C. Cartera de Préstamos (Activo Por Cobrar)
+// (Monto Prestado - Capital Pagado)
 $sql_cartera = "
     SELECT SUM(p.monto_aprobado - IFNULL((SELECT SUM(monto) FROM Transaccion_Caja WHERE prestamo_id = p.id AND tipo_movimiento='PAGO_PRESTAMO_CAPITAL'), 0)) 
     FROM Prestamo p 
@@ -35,118 +33,131 @@ $stmt_cartera = $pdo->prepare($sql_cartera);
 $stmt_cartera->execute([$ciclo_id]);
 $dinero_en_calle = $stmt_cartera->fetchColumn() ?: 0;
 
-// D. Ganancias (Intereses + Multas + Otros)
-// Obtenemos esto sumando transacciones de tipo ganancia en todas las reuniones de este ciclo
+// D. Ganancias (Utilidad del Ejercicio)
+// Ingresos (Intereses+Multas) - Gastos
 $sql_ganancia = "
     SELECT SUM(monto) FROM Transaccion_Caja tc
     JOIN Reunion r ON tc.reunion_id = r.id
     WHERE r.ciclo_id = ? 
     AND tc.tipo_movimiento IN ('PAGO_PRESTAMO_INTERES', 'PAGO_MULTA', 'INGRESO_EXTRA')";
-$stmt_ganancia = $pdo->prepare($sql_ganancia);
-$stmt_ganancia->execute([$ciclo_id]);
-$total_ganancia = $stmt_ganancia->fetchColumn() ?: 0;
+$total_ganancia = $pdo->prepare($sql_ganancia)->execute([$ciclo_id]) ? $pdo->prepare($sql_ganancia)->fetchColumn() : 0;
 
-// E. Gastos Operativos
 $sql_gastos = "
     SELECT SUM(monto) FROM Transaccion_Caja tc
     JOIN Reunion r ON tc.reunion_id = r.id
     WHERE r.ciclo_id = ? 
     AND tc.tipo_movimiento = 'GASTO_OPERATIVO'";
-$stmt_gastos = $pdo->prepare($sql_gastos);
-$stmt_gastos->execute([$ciclo_id]);
-$total_gastos = $stmt_gastos->fetchColumn() ?: 0;
+$total_gastos = $pdo->prepare($sql_gastos)->execute([$ciclo_id]) ? $pdo->prepare($sql_gastos)->fetchColumn() : 0;
 
-$utilidad_neta = $total_ganancia - $total_gastos;
-$activos_totales = $caja_actual + $dinero_en_calle;
+$utilidad_neta = ($total_ganancia ?: 0) - ($total_gastos ?: 0);
+
+// E. Totales Generales
+$total_activos = $caja_actual + $dinero_en_calle;
+$total_pasivo_patrimonio = $total_ahorros + $utilidad_neta;
+$diferencia_contable = $total_activos - $total_pasivo_patrimonio;
 ?>
 
-<div class="container" style="max-width: 900px;">
+<div class="flex-between print-hide" style="margin-bottom: 20px;">
+    <a href="index.php" class="btn btn-secondary">
+        <i class='bx bx-arrow-back'></i> Volver a Reportes
+    </a>
+    <button onclick="window.print()" class="btn btn-primary">
+        <i class='bx bx-printer'></i> IMPRIMIR BALANCE
+    </button>
+</div>
+
+<div class="documento-impresion">
     
-    <div class="flex-between print-hide" style="margin-bottom: 20px;">
-        <a href="index.php" class="btn btn-secondary">
-            <i class='bx bx-arrow-back'></i> Volver a Reportes
-        </a>
-        <button onclick="window.print()" class="btn btn-primary">
-            <i class='bx bx-printer'></i> Imprimir Balance
-        </button>
+    <div class="doc-header" style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px;">
+        <h2 style="text-transform: uppercase; margin: 0;">Balance General</h2>
+        <p style="margin: 5px 0;">GAPC: <?php echo htmlspecialchars($ciclo['grupo']); ?></p>
+        <p style="font-size: 0.9rem;"><?php echo htmlspecialchars($ciclo['nombre']); ?> | Al: <?php echo date('d/m/Y'); ?></p>
     </div>
 
-    <div class="card" id="hoja-impresion">
-        <div class="text-center" style="border-bottom: 2px solid var(--color-brand); padding-bottom: 20px; margin-bottom: 20px;">
-            <h2 style="margin:0; color: var(--color-brand);">BALANCE GENERAL</h2>
-            <h3 style="margin:5px 0; font-weight: normal;"><?php echo htmlspecialchars($ciclo['grupo']); ?></h3>
-            <p style="color: #666;"><?php echo htmlspecialchars($ciclo['nombre']); ?> | Fecha: <?php echo date('d/m/Y'); ?></p>
+    <table class="doc-table" style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #eee;">
+                <th style="border: 1px solid #999; padding: 8px; text-align: left;">CUENTA</th>
+                <th style="border: 1px solid #999; padding: 8px; text-align: right; width: 150px;">MONTO</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="2" style="border: 1px solid #999; padding: 8px; background-color: #f9f9f9;"><strong>1. ACTIVOS (Lo que tenemos)</strong></td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #999; padding: 8px; padding-left: 20px;">Efectivo en Caja (Disponible)</td>
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">$<?php echo number_format($caja_actual, 2); ?></td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #999; padding: 8px; padding-left: 20px;">Cartera de Préstamos (Por Cobrar)</td>
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">$<?php echo number_format($dinero_en_calle, 2); ?></td>
+            </tr>
+            <tr style="font-weight: bold;">
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">TOTAL ACTIVOS:</td>
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">$<?php echo number_format($total_activos, 2); ?></td>
+            </tr>
+
+            <tr><td colspan="2" style="border:none; height:15px;"></td></tr>
+
+            <tr>
+                <td colspan="2" style="border: 1px solid #999; padding: 8px; background-color: #f9f9f9;"><strong>2. PASIVO Y PATRIMONIO (De quién es el dinero)</strong></td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #999; padding: 8px; padding-left: 20px;">Ahorros de Socias (Capital Social)</td>
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">$<?php echo number_format($total_ahorros, 2); ?></td>
+            </tr>
+            <tr>
+                <td style="border: 1px solid #999; padding: 8px; padding-left: 20px;">Utilidad Neta (Ganancias por Repartir)</td>
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">$<?php echo number_format($utilidad_neta, 2); ?></td>
+            </tr>
+            <tr style="font-weight: bold;">
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">TOTAL PASIVO + PATRIMONIO:</td>
+                <td style="border: 1px solid #999; padding: 8px; text-align: right;">$<?php echo number_format($total_pasivo_patrimonio, 2); ?></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <?php if (abs($diferencia_contable) > 0.05): ?>
+        <div style="margin-top: 20px; padding: 10px; border: 1px solid #D32F2F; color: #D32F2F; text-align: center; font-size: 0.9rem;">
+            <strong>⚠️ NOTA AUDITORÍA:</strong> Existe una diferencia contable de $<?php echo number_format($diferencia_contable, 2); ?>. Revisar cuadres de caja.
         </div>
+    <?php endif; ?>
 
-        <div class="grid-2" style="margin-bottom: 30px;">
-            <div style="background: #E3F2FD; padding: 20px; border-radius: 12px; text-align: center;">
-                <small style="color: #1565C0; font-weight: bold; text-transform: uppercase;">Activos Totales (Lo que tenemos)</small>
-                <div style="font-size: 2.5rem; font-weight: bold; color: #1565C0;">
-                    $<?php echo number_format($activos_totales, 2); ?>
-                </div>
-                <p style="font-size: 0.9rem; color: #1565C0;">Caja + Préstamos</p>
-            </div>
+    <br><br><br>
 
-            <div style="background: #FFF3E0; padding: 20px; border-radius: 12px; text-align: center;">
-                <small style="color: #EF6C00; font-weight: bold; text-transform: uppercase;">Utilidad Neta (Ganancia)</small>
-                <div style="font-size: 2.5rem; font-weight: bold; color: #EF6C00;">
-                    $<?php echo number_format($utilidad_neta, 2); ?>
-                </div>
-                <p style="font-size: 0.9rem; color: #EF6C00;">Intereses + Multas - Gastos</p>
-            </div>
+    <div style="display: flex; justify-content: space-between; text-align: center; margin-top: 50px;">
+        <div style="width: 30%;">
+            <hr style="border: 1px solid #000;">
+            <small>PRESIDENTA</small>
         </div>
-
-        <h3 style="color: var(--color-brand); border-bottom: 1px solid #eee; padding-bottom: 10px;">Desglose de Cuentas</h3>
-        
-        <table class="table" style="margin-top: 10px;">
-            <tr style="background: #FAFAFA;"><td colspan="2"><strong>1. ¿DÓNDE ESTÁ EL DINERO? (ACTIVOS)</strong></td></tr>
-            <tr>
-                <td>Efectivo en Caja (Mano)</td>
-                <td class="text-right">$<?php echo number_format($caja_actual, 2); ?></td>
-            </tr>
-            <tr>
-                <td>Cartera de Préstamos (Calle)</td>
-                <td class="text-right">$<?php echo number_format($dinero_en_calle, 2); ?></td>
-            </tr>
-            <tr style="border-top: 2px solid #ccc;">
-                <td><strong>TOTAL ACTIVOS</strong></td>
-                <td class="text-right"><strong>$<?php echo number_format($activos_totales, 2); ?></strong></td>
-            </tr>
-
-            <tr><td colspan="2" style="border:none; height: 20px;"></td></tr>
-
-            <tr style="background: #FAFAFA;"><td colspan="2"><strong>2. ¿DE QUIÉN ES EL DINERO? (PASIVO + PATRIMONIO)</strong></td></tr>
-            <tr>
-                <td>Ahorros de los Socios</td>
-                <td class="text-right">$<?php echo number_format($total_ahorros, 2); ?></td>
-            </tr>
-            <tr>
-                <td>Utilidades por Repartir</td>
-                <td class="text-right">$<?php echo number_format($utilidad_neta, 2); ?></td>
-            </tr>
-            <tr style="border-top: 2px solid #ccc;">
-                <td><strong>TOTAL OBLIGACIONES</strong></td>
-                <td class="text-right"><strong>$<?php echo number_format($total_ahorros + $utilidad_neta, 2); ?></strong></td>
-            </tr>
-        </table>
-
-        <?php if (abs($activos_totales - ($total_ahorros + $utilidad_neta)) > 0.05): ?>
-            <div style="margin-top: 20px; padding: 10px; background: #FFEBEE; color: #D32F2F; border-radius: 8px; text-align: center;">
-                ⚠️ <strong>Atención:</strong> Existe una pequeña diferencia contable de $<?php echo number_format($activos_totales - ($total_ahorros + $utilidad_neta), 2); ?>. Verifique si hubo ingresos o gastos no registrados.
-            </div>
-        <?php endif; ?>
-
+        <div style="width: 30%;">
+            <hr style="border: 1px solid #000;">
+            <small>TESORERA</small>
+        </div>
+        <div style="width: 30%;">
+            <hr style="border: 1px solid #000;">
+            <small>SECRETARIA</small>
+        </div>
     </div>
+
+    <div style="margin-top: 30px; text-align: center; font-size: 0.8rem; color: #666;">
+        <p>Documento generado el <?php echo date('d/m/Y H:i'); ?>.</p>
+    </div>
+
 </div>
 
 <style>
-    .text-right { text-align: right; }
-    /* Estilo para ocultar botones al imprimir */
+    .documento-impresion {
+        background: white; padding: 40px; max-width: 850px; margin: 0 auto;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1); font-family: 'Times New Roman', serif; color: #000;
+    }
     @media print {
-        .print-hide, .sidebar { display: none !important; }
-        .main-content { margin: 0; width: 100%; }
         body { background: white; }
-        .card { box-shadow: none; border: none; }
+        .print-hide, .sidebar, .topbar { display: none !important; }
+        .main-content { margin: 0; padding: 0; width: 100%; }
+        .documento-impresion { box-shadow: none; max-width: 100%; padding: 0; margin: 0; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 </style>
 
