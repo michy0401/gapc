@@ -30,13 +30,19 @@ $total_gastos = $stmt_gas->fetchColumn() ?: 0;
 
 $utilidad_neta = $total_ganancia - $total_gastos;
 
-// Capital
+// 4. CAPITAL SOCIAL (AHORROS)
 $stmt_a = $pdo->prepare("SELECT SUM(saldo_ahorros) FROM Miembro_Ciclo WHERE ciclo_id = ?");
 $stmt_a->execute([$ciclo_id]);
-$total_ahorro = $stmt_a->fetchColumn() ?: 1;
+$total_ahorro = (float) $stmt_a->fetchColumn(); // Convertimos a número decimal
 
-$factor = $utilidad_neta / $total_ahorro;
-
+// Factor de Rentabilidad
+// BLINDAJE CONTRA ERROR: Si el ahorro es 0, el factor es 0 (no dividimos)
+if ($total_ahorro > 0) {
+    $factor = $utilidad_neta / $total_ahorro;
+} else {
+    $factor = 0;
+    $total_ahorro = 0; // Lo dejamos en 0 visualmente, pero evitamos usarlo para dividir
+}
 // Socios
 $stmt_s = $pdo->prepare("SELECT mc.*, u.nombre_completo FROM Miembro_Ciclo mc JOIN Usuario u ON mc.usuario_id = u.id WHERE mc.ciclo_id = ? ORDER BY u.nombre_completo");
 $stmt_s->execute([$ciclo_id]);

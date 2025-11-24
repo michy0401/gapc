@@ -11,7 +11,7 @@ $stmt = $pdo->prepare("SELECT c.*, g.nombre as grupo FROM Ciclo c JOIN Grupo g O
 $stmt->execute([$ciclo_id]);
 $ciclo = $stmt->fetch();
 
-// 2. VALIDACIÓN: ¿HAY DEUDAS ACTIVAS?
+// 2. VALIDACIÓN DE DEUDAS
 $sql_pendientes = "SELECT p.*, u.nombre_completo 
                    FROM Prestamo p 
                    JOIN Miembro_Ciclo mc ON p.miembro_ciclo_id = mc.id
@@ -23,6 +23,7 @@ $deudores = $stmt_p->fetchAll();
 $hay_deudas = count($deudores) > 0;
 
 // 3. CÁLCULO DE UTILIDADES
+// Ganancias
 $sql_ganancia = "SELECT SUM(t.monto) 
                  FROM Transaccion_Caja t 
                  JOIN Reunion r ON t.reunion_id = r.id 
@@ -30,9 +31,9 @@ $sql_ganancia = "SELECT SUM(t.monto)
                  AND t.tipo_movimiento IN ('PAGO_PRESTAMO_INTERES', 'PAGO_MULTA', 'INGRESO_EXTRA')";
 $stmt_gan = $pdo->prepare($sql_ganancia);
 $stmt_gan->execute([$ciclo_id]);
-$total_ganancia = $stmt_gan->fetchColumn();
-$total_ganancia = $total_ganancia ? $total_ganancia : 0;
+$total_ganancia = (float) $stmt_gan->fetchColumn();
 
+// Gastos
 $sql_gastos = "SELECT SUM(t.monto) 
                FROM Transaccion_Caja t 
                JOIN Reunion r ON t.reunion_id = r.id 
@@ -40,18 +41,22 @@ $sql_gastos = "SELECT SUM(t.monto)
                AND t.tipo_movimiento = 'GASTO_OPERATIVO'";
 $stmt_gas = $pdo->prepare($sql_gastos);
 $stmt_gas->execute([$ciclo_id]);
-$total_gastos = $stmt_gas->fetchColumn();
-$total_gastos = $total_gastos ? $total_gastos : 0;
+$total_gastos = (float) $stmt_gas->fetchColumn();
 
 $utilidad_neta = $total_ganancia - $total_gastos;
 
-// 4. CAPITAL SOCIAL
+// 4. CAPITAL SOCIAL (CORREGIDO AQUÍ) 🛠️
 $sql_ahorro = "SELECT SUM(saldo_ahorros) FROM Miembro_Ciclo WHERE ciclo_id = ?";
 $stmt_a = $pdo->prepare($sql_ahorro);
 $stmt_a->execute([$ciclo_id]);
-$total_ahorro = $stmt_a->fetchColumn() ?: 1; 
+$total_ahorro = (float) $stmt_a->fetchColumn(); 
 
-$factor = $utilidad_neta / $total_ahorro;
+// Factor de Rentabilidad (BLINDADO)
+if ($total_ahorro > 0) {
+    $factor = $utilidad_neta / $total_ahorro;
+} else {
+    $factor = 0;
+}
 
 // 5. LISTA DE DISTRIBUCIÓN
 $sql_socios = "SELECT mc.*, u.nombre_completo FROM Miembro_Ciclo mc JOIN Usuario u ON mc.usuario_id = u.id WHERE mc.ciclo_id = ? ORDER BY u.nombre_completo";
@@ -59,7 +64,7 @@ $stmt_s = $pdo->prepare($sql_socios);
 $stmt_s->execute([$ciclo_id]);
 $socios = $stmt_s->fetchAll();
 
-// 6. PROCESAR CIERRE FINAL
+// 6. PROCESAR CIERRE
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
     try {
         $stmt_close = $pdo->prepare("UPDATE Ciclo SET estado = 'LIQUIDADO' WHERE id = ?");
@@ -82,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
 <?php if ($hay_deudas): ?>
     <div class="card" style="border-left: 5px solid #D32F2F; background-color: #FFEBEE;">
         <h3 style="color: #D32F2F;"><i class='bx bx-block'></i> NO SE PUEDE CERRAR</h3>
-        <p>Hay préstamos activos. Todo debe estar pagado antes de distribuir utilidades.</p>
+        <p>Existen préstamos activos. Todo debe estar pagado antes de distribuir utilidades.</p>
         <br>
         <strong>Deudores Pendientes:</strong>
         <ul>
@@ -91,13 +96,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
             <?php endforeach; ?>
         </ul>
         <p style="margin-top: 10px;">
-            <a href="../prestamos/index.php" class="btn btn-sm btn-danger">Ir a Préstamos</a>
+            <a href="../prestamos/index.php" class="btn btn-sm btn-danger">Ir a cobrar préstamos</a>
         </p>
     </div>
 <?php endif; ?>
 
 <div class="grid-2">
-    
     <div class="card">
         <h3><i class='bx bx-pie-chart-alt-2'></i> La "Bolsa" a Repartir</h3>
         <table class="table">
@@ -106,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
                 <td class="text-right">$<?php echo number_format($total_ahorro, 2); ?></td>
             </tr>
             <tr>
-                <td>(+) Intereses y Multas</td>
+                <td>(+) Intereses y Multas Cobradas</td>
                 <td class="text-right">$<?php echo number_format($total_ganancia, 2); ?></td>
             </tr>
             <tr>
@@ -122,11 +126,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
         </table>
         
         <div style="margin-top: 20px; padding: 15px; background: #E3F2FD; border-radius: 8px; text-align: center;">
-            <small>RENTABILIDAD</small>
+            <small>RENTABILIDAD POR DÓLAR</small>
             <div style="font-size: 1.5rem; font-weight: bold; color: #1565C0;">
                 <?php echo number_format($factor * 100, 1); ?>%
             </div>
-            <small>Por cada $1.00 ahorrado, se ganan $<?php echo number_format($factor, 4); ?></small>
+            <small>Por cada $1.00 ahorrado, ganan $<?php echo number_format($factor, 4); ?></small>
         </div>
     </div>
 
@@ -137,9 +141,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
                 <thead>
                     <tr>
                         <th>Socia</th>
-                        <th class="text-center">Ahorro</th>
-                        <th class="text-center">Ganancia</th>
-                        <th class="text-center">Total a Recibir</th>
+                        <th class="text-right">Ahorro</th>
+                        <th class="text-right">Ganancia</th>
+                        <th class="text-right">Total a Recibir</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -149,11 +153,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
                     ?>
                     <tr>
                         <td><?php echo htmlspecialchars($s['nombre_completo']); ?></td>
-                        <td class="text-center">$<?php echo number_format($s['saldo_ahorros'], 2); ?></td>
-                        <td class="text-center" style="color: var(--color-success);">
+                        <td class="text-right">$<?php echo number_format($s['saldo_ahorros'], 2); ?></td>
+                        <td class="text-right" style="color: var(--color-success);">
                             + $<?php echo number_format($ganancia, 2); ?>
                         </td>
-                        <td class="text-center" style="font-weight: bold;">
+                        <td class="text-right" style="font-weight: bold;">
                             $<?php echo number_format($total, 2); ?>
                         </td>
                     </tr>
@@ -162,7 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
             </table>
         </div>
     </div>
-
 </div>
 
 <?php if (!$hay_deudas): ?>
@@ -201,7 +204,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
 
 <style> 
     .text-right { text-align: right; } 
-    
     .modal-overlay-custom {
         display: none;
         position: fixed;

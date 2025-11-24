@@ -50,7 +50,6 @@ $stats = $stmt_s->fetch();
         <a href="<?php echo $link_volver; ?>" class="btn btn-secondary">
             <i class='bx bx-arrow-back'></i> <?php echo $texto_volver; ?>
         </a>
-            
         
         <h2 style="margin-top:10px;">Detalle de Ciclo Operativo</h2>
         <p style="color: var(--color-brand);">
@@ -58,7 +57,13 @@ $stats = $stmt_s->fetch();
         </p>
     </div>
     
-    <a href="../miembros/index.php?ciclo_id=<?php echo $ciclo_id; ?>&origen=detalle_ciclo" class="btn btn-primary">
+    <?php 
+        // Si estamos en el flujo de "Mis Grupos", le decimos a la siguiente pantalla
+        // que use el modo "detalle_ciclo_mg" (MG = Mis Grupos)
+        $origen_siguiente = ($origen == 'mis_grupos') ? 'detalle_ciclo_mg' : 'detalle_ciclo';
+    ?>
+    
+    <a href="../miembros/index.php?ciclo_id=<?php echo $ciclo_id; ?>&origen=<?php echo $origen_siguiente; ?>" class="btn btn-primary">
         <i class='bx bx-group'></i> Ver Miembros Inscritos
     </a>
 </div>

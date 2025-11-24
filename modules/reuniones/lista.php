@@ -38,7 +38,7 @@ if ($origen == 'mis_grupos') {
         <h2 style="margin-top: 5px;">Reuniones: <?php echo htmlspecialchars($ciclo['grupo']); ?></h2>
     </div>
 
-    <a href="crear.php?ciclo_id=<?php echo $ciclo_id; ?>&num=<?php echo $siguiente_numero; ?>" class="btn btn-primary">
+    <a href="crear.php?ciclo_id=<?php echo $ciclo_id; ?>&num=<?php echo $siguiente_numero; ?>&origen=<?php echo $origen; ?>" class="btn btn-primary">
         <i class='bx bx-plus-circle'></i> Iniciar Reunión #<?php echo $siguiente_numero; ?>
     </a>
 </div>

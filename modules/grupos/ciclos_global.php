@@ -51,8 +51,8 @@ $ciclos = $stmt->fetchAll();
     <a href="?estado=ACTIVO" class="btn <?php echo $filtro_estado == 'ACTIVO' ? 'btn-success' : 'btn-secondary'; ?>">
         <i class='bx bx-play-circle'></i> Activos
     </a>
-    <a href="?estado=CERRADO" class="btn <?php echo $filtro_estado == 'CERRADO' ? 'btn-primary' : 'btn-secondary'; ?>">
-        <i class='bx bx-lock-alt'></i> Cerrados
+    <a href="?estado=LIQUIDADO" class="btn <?php echo $filtro_estado == 'LIQUIDADO' ? 'btn-primary' : 'btn-secondary'; ?>">
+        <i class='bx bx-lock-alt'></i> Liquidados
     </a>
     <a href="?estado=TODOS" class="btn <?php echo $filtro_estado == 'TODOS' ? 'btn-brand' : 'btn-secondary'; ?>">
         <i class='bx bx-list-ul'></i> Ver Todos

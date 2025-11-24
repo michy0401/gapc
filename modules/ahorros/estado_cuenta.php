@@ -27,11 +27,25 @@ $sql_hist = "SELECT t.*, r.fecha as fecha_mov, r.numero_reunion
 $stmt_h = $pdo->prepare($sql_hist);
 $stmt_h->execute([$miembro_id]);
 $movs = $stmt_h->fetchAll();
+
+
+// LÓGICA DE RETORNO INTELIGENTE
+$origen = isset($_GET['origen']) ? $_GET['origen'] : '';
+
+if ($origen == 'mi_perfil') {
+    // Si soy socio viendo mis cosas
+    $link_volver = "../../modules/mi_perfil/mis_finanzas.php";
+    $texto_volver = "Volver a Mis Finanzas";
+} else {
+    // Si soy admin/promotora
+    $link_volver = "ver.php?id=$miembro_id";
+    $texto_volver = "Regresar al Detalle";
+}
 ?>
 
 <div class="flex-between print-hide" style="margin-bottom: 20px;">
-    <a href="ver.php?id=<?php echo $miembro_id; ?>" class="btn btn-secondary">
-        <i class='bx bx-arrow-back'></i> Regresar
+    <a href="<?php echo $link_volver; ?>" class="btn btn-secondary">
+        <i class='bx bx-arrow-back'></i> <?php echo $texto_volver; ?>
     </a>
     <button onclick="window.print()" class="btn btn-primary">
         <i class='bx bx-printer'></i> IMPRIMIR ESTADO DE CUENTA

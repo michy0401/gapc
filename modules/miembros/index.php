@@ -69,23 +69,29 @@ $miembros = $stmt->fetchAll();
     <div>
         <?php if (!$is_global_view && $datos_ciclo): ?>
             <?php 
-                // Lógica de retorno según origen
-                // Default: Volver al Grupo
+                // Lógica de retorno
+                // Default:
                 $link_volver = "../grupos/ver.php?id=" . $datos_ciclo['grupo_id'];
                 $texto_volver = "Volver al Grupo";
 
                 if ($origen == 'mis_grupos') {
-                    // Regresar a Mis Grupos (Para la Directiva)
-                    $link_volver = "../../modules/mi_perfil/mis_grupos.php";
-                    $texto_volver = "Volver a Mis Grupos";
+                    // CORRECCIÓN: Regresamos al Detalle del Grupo, pero le pasamos la etiqueta 'mis_grupos'
+                    // Así, cuando estemos en el detalle, el botón de atrás sabrá llevarnos a 'Mis Grupos'
+                    $link_volver = "../grupos/ver.php?id=" . $datos_ciclo['grupo_id'] . "&origen=mis_grupos";
+                    $texto_volver = "Volver al Grupo"; // Texto correcto: Regresa al nivel anterior
+
                 } elseif ($origen == 'ciclos_global') {
-                    // Regresar al listado global de ciclos
                     $link_volver = "../grupos/ciclos_global.php";
                     $texto_volver = "Volver a Ciclos";
+
                 } elseif ($origen == 'detalle_ciclo') {
-                    // Regresar al detalle específico del ciclo
-                    // Truco: mantenemos el origen 'global' si veníamos de ahí
+                    // Flujo Admin Global
                     $link_volver = "../grupos/ver_ciclo.php?id=" . $ciclo_id . "&origen=global";
+                    $texto_volver = "Volver al Ciclo";
+
+                } elseif ($origen == 'detalle_ciclo_mg') {
+                    // Flujo Directiva Profundo
+                    $link_volver = "../grupos/ver_ciclo.php?id=" . $ciclo_id . "&origen=mis_grupos";
                     $texto_volver = "Volver al Ciclo";
                 }
             ?>
@@ -93,7 +99,7 @@ $miembros = $stmt->fetchAll();
                 <i class='bx bx-arrow-back'></i> <?php echo $texto_volver; ?>
             </a>
         <?php endif; ?>
-        
+                
         <h2><?php echo $titulo_pagina; ?></h2>
         <p style="color: var(--color-brand); font-weight: bold;">
             <?php echo $subtitulo; ?>

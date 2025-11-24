@@ -11,7 +11,9 @@ $rol = $_SESSION['rol_usuario'] ?? 0;
 <div class="sidebar">
     <div class="sidebar-header">
         <h2 style="color: #ffffff">GAPC</h2>
-        <p style="font-size: 0.8rem; opacity: 0.9;">
+        <b style="font-size: 0.8rem; opacity: 0.9;">Grupos de Ahorro y Préstamo Comunitario</b>
+
+        <p style="font-size: 0.8rem; opacity: 0.9; ">
             <?php 
                 if($rol == ROL_ADMIN) echo "Administrador";
                 elseif($rol == ROL_PROMOTORA) echo "Promotora";

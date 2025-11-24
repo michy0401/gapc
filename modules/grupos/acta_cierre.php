@@ -11,10 +11,9 @@ $stmt = $pdo->prepare("SELECT c.*, g.nombre as grupo FROM Ciclo c JOIN Grupo g O
 $stmt->execute([$ciclo_id]);
 $ciclo = $stmt->fetch();
 
-// 2. CÁLCULOS FINANCIEROS (Lógica Mejorada)
+// 2. CÁLCULOS FINANCIEROS (BLINDADOS)
 
 // Ganancias (Intereses + Multas + Ingresos Extra)
-// NOTA: Usamos una consulta directa uniendo Reunion para asegurar que pertenece al ciclo
 $sql_ganancia = "
     SELECT SUM(t.monto) 
     FROM Transaccion_Caja t 
@@ -24,10 +23,7 @@ $sql_ganancia = "
 
 $stmt_gan = $pdo->prepare($sql_ganancia);
 $stmt_gan->execute([$ciclo_id]);
-$total_ganancia = $stmt_gan->fetchColumn(); 
-
-// Forzamos a 0 si viene null
-$total_ganancia = $total_ganancia ? $total_ganancia : 0;
+$total_ganancia = (float) $stmt_gan->fetchColumn(); // Convertimos a número
 
 // Gastos
 $sql_gastos = "
@@ -39,19 +35,22 @@ $sql_gastos = "
 
 $stmt_gas = $pdo->prepare($sql_gastos);
 $stmt_gas->execute([$ciclo_id]);
-$total_gastos = $stmt_gas->fetchColumn();
-$total_gastos = $total_gastos ? $total_gastos : 0;
+$total_gastos = (float) $stmt_gas->fetchColumn(); // Convertimos a número
 
 // Utilidad Neta
 $utilidad_neta = $total_ganancia - $total_gastos;
 
-// Capital Social
+// Capital Social (Ahorros Totales)
 $stmt_a = $pdo->prepare("SELECT SUM(saldo_ahorros) FROM Miembro_Ciclo WHERE ciclo_id = ?");
 $stmt_a->execute([$ciclo_id]);
-$total_ahorro = $stmt_a->fetchColumn() ?: 1;
+$total_ahorro = (float) $stmt_a->fetchColumn(); // Convertimos a número
 
-// Factor de Distribución
-$factor = $utilidad_neta / $total_ahorro;
+// Factor de Distribución (PROTECCIÓN CONTRA ERROR / 0)
+if ($total_ahorro > 0) {
+    $factor = $utilidad_neta / $total_ahorro;
+} else {
+    $factor = 0;
+}
 
 // Socios para firmas
 $stmt_s = $pdo->prepare("SELECT mc.*, u.nombre_completo, u.dui FROM Miembro_Ciclo mc JOIN Usuario u ON mc.usuario_id = u.id WHERE mc.ciclo_id = ? ORDER BY u.nombre_completo");

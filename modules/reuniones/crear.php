@@ -3,13 +3,10 @@
 require_once '../../includes/header.php';
 require_once '../../config/db.php';
 
-// 1. VALIDAR ENTRADA
-if (!isset($_GET['ciclo_id']) || !isset($_GET['num'])) {
-    header("Location: index.php");
-    exit;
-}
 $ciclo_id = $_GET['ciclo_id'];
 $numero_reunion = $_GET['num'];
+// 1. CAPTURAR ORIGEN
+$origen = isset($_GET['origen']) ? $_GET['origen'] : '';
 
 // 2. BUSCAR SALDO ANTERIOR (Inteligencia Financiera)
 // Buscamos la última reunión cerrada para ver con cuánto dinero se quedaron.
@@ -43,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // REDIRECCIÓN DIRECTA AL PANEL DE TRABAJO
         // Aquí es donde ocurrirá la magia de la asistencia y pagos
-        echo "<script>window.location.href='panel.php?id=$id_reunion';</script>";
+        echo "<script>window.location.href='panel.php?id=$id_reunion&origen=$origen';</script>";
         exit;
 
     } catch (PDOException $e) {
@@ -53,14 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 ?>
 
 <div class="container" style="max-width: 600px; margin: 0 auto;">
-    
+        
     <div class="flex-between" style="margin-bottom: 20px;">
-        <a href="lista.php?ciclo_id=<?php echo $ciclo_id; ?>" class="btn btn-secondary">
+        <a href="lista.php?ciclo_id=<?php echo $ciclo_id; ?>&origen=<?php echo $origen; ?>" class="btn btn-secondary">
             <i class='bx bx-arrow-back'></i> Cancelar
         </a>
         <h2>Apertura de Caja</h2>
     </div>
-
     <?php if($mensaje): ?>
         <div class="badge badge-danger" style="display:block; padding:15px; margin-bottom:20px; text-align:center;">
             <?php echo $mensaje; ?>

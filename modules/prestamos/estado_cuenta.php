@@ -31,11 +31,23 @@ $movs = $movimientos->fetchAll();
 $saldo_actual = $p['monto_aprobado'];
 $total_capital = 0;
 $total_interes = 0;
+
+
+// LÓGICA DE RETORNO INTELIGENTE
+$origen = isset($_GET['origen']) ? $_GET['origen'] : '';
+
+if ($origen == 'mi_perfil') {
+    $link_volver = "../../modules/mi_perfil/mis_finanzas.php";
+    $texto_volver = "Volver a Mis Finanzas";
+} else {
+    $link_volver = "ver.php?id=$prestamo_id";
+    $texto_volver = "Regresar al Detalle";
+}
 ?>
 
 <div class="flex-between print-hide" style="margin-bottom: 20px;">
-    <a href="ver.php?id=<?php echo $prestamo_id; ?>" class="btn btn-secondary">
-        <i class='bx bx-arrow-back'></i> Regresar
+    <a href="<?php echo $link_volver; ?>" class="btn btn-secondary">
+        <i class='bx bx-arrow-back'></i> <?php echo $texto_volver; ?>
     </a>
     <button onclick="window.print()" class="btn btn-primary">
         <i class='bx bx-printer'></i> IMPRIMIR

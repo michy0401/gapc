@@ -10,12 +10,15 @@ if (!isset($_GET['grupo_id'])) {
 }
 $grupo_id = $_GET['grupo_id'];
 
-// Obtener nombre del grupo para mostrarlo
+// 2. RECIBIR EL ORIGEN (CORRECCIÓN DE NAVEGACIÓN)
+$origen = isset($_GET['origen']) ? $_GET['origen'] : '';
+
+// Obtener nombre del grupo
 $stmt_g = $pdo->prepare("SELECT nombre FROM Grupo WHERE id = ?");
 $stmt_g->execute([$grupo_id]);
 $grupo = $stmt_g->fetch();
 
-// 2. OBTENER CATÁLOGO DE MULTAS (Para que el usuario elija cuáles aplican)
+// Obtener catálogo de multas
 $multas_catalogo = $pdo->query("SELECT * FROM Catalogo_Multas")->fetchAll();
 
 $mensaje = '';
@@ -23,16 +26,14 @@ $mensaje = '';
 // 3. PROCESAR FORMULARIO
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
-        // INICIAMOS TRANSACCIÓN (Modo seguro)
         $pdo->beginTransaction();
 
         // A. Datos básicos
         $nombre = $_POST['nombre'];
         $fecha_inicio = $_POST['fecha_inicio'];
-        $duracion = $_POST['duracion']; // Meses
+        $duracion = $_POST['duracion'];
         $tasa_interes = $_POST['tasa_interes'];
         
-        // Calcular fecha fin estimada (Fecha inicio + X meses)
         $fecha_fin = date('Y-m-d', strtotime($fecha_inicio . " + $duracion months"));
 
         // B. Insertar el Ciclo
@@ -41,30 +42,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt = $pdo->prepare($sql_ciclo);
         $stmt->execute([$grupo_id, $nombre, $fecha_inicio, $fecha_fin, $duracion, $tasa_interes]);
         
-        $nuevo_ciclo_id = $pdo->lastInsertId(); // Obtenemos el ID del ciclo recién creado
+        $nuevo_ciclo_id = $pdo->lastInsertId();
 
         // C. Guardar Configuración de Multas
-        // El formulario envía un array: $_POST['multas_activas'] con los IDs seleccionados
         if (isset($_POST['multas_activas'])) {
             $sql_conf = "INSERT INTO Configuracion_Multas_Ciclo (ciclo_id, catalogo_multa_id, monto_aplicar) VALUES (?, ?, ?)";
             $stmt_conf = $pdo->prepare($sql_conf);
 
             foreach ($_POST['multas_activas'] as $multa_id) {
-                // Obtenemos el monto específico que el usuario escribió para esa multa
                 $monto = $_POST['monto_multa'][$multa_id];
                 $stmt_conf->execute([$nuevo_ciclo_id, $multa_id, $monto]);
             }
         }
 
-        // Si todo salió bien, CONFIRMAMOS los cambios
         $pdo->commit();
 
-        // Redirigir a la pantalla de detalle del grupo
-        echo "<script>window.location.href='ver.php?id=$grupo_id';</script>";
+        // REDIRECCIÓN CORREGIDA: Devolvemos la etiqueta de origen
+        echo "<script>window.location.href='ver.php?id=$grupo_id&origen=$origen';</script>";
         exit;
 
     } catch (Exception $e) {
-        // Si algo falló, DESHACEMOS todo
         $pdo->rollBack();
         $mensaje = "Error al crear ciclo: " . $e->getMessage();
     }
@@ -74,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <div class="container" style="max-width: 900px; margin: 0 auto;">
     
     <div style="margin-bottom: 20px;">
-        <a href="ver.php?id=<?php echo $grupo_id; ?>" style="color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+        <a href="ver.php?id=<?php echo $grupo_id; ?>&origen=<?php echo $origen; ?>" class="btn btn-secondary">
             <i class='bx bx-arrow-back'></i> Volver al Grupo
         </a>
         <h2 style="margin-top: 10px;">Configurar Nuevo Ciclo</h2>
@@ -112,6 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label>Duración (Meses):</label>
                     <select name="duracion" required>
                         <option value="6">6 Meses</option>
+                        <option value="9">9 Meses</option>
                         <option value="12" selected>12 Meses (1 Año)</option>
                     </select>
                 </div>
@@ -130,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ¿Cuánto pagan por cada $100 prestados al mes? (Ej: 5% = $5.00)
                 </p>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <input type="number" name="tasa_interes" step="0.01" min="0" value="0" style="width: 150px; font-weight: bold; font-size: 1.2rem;">
+                    <input type="number" name="tasa_interes" step="0.01" min="0" value="5.00" style="width: 150px; font-weight: bold; font-size: 1.2rem;">
                     <span style="font-size: 1.2rem; font-weight: bold;">%</span>
                 </div>
             </div>
