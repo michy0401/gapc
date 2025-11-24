@@ -8,16 +8,14 @@ $ciclo_id = isset($_GET['ciclo_id']) ? $_GET['ciclo_id'] : null;
 $is_global_view = empty($ciclo_id);
 
 // RECUPERAR EL ORIGEN (Para saber a dónde volver)
-// Valores posibles: 'grupo' (default), 'ciclos_global', 'detalle_ciclo'
 $origen = isset($_GET['origen']) ? $_GET['origen'] : 'grupo';
 
-// Variables para el encabezado
+// Variables iniciales
 $titulo_pagina = "Directorio Global de Miembros";
 $subtitulo = "Todos los registros activos";
 $datos_ciclo = null;
 
 // 2. CONSTRUCCIÓN DE LA CONSULTA SQL
-// Usamos mc.id simple para no confundir al HTML de abajo
 $sql = "SELECT mc.id, 
                u.nombre_completo, u.dui, u.telefono, 
                cc.nombre as cargo, 
@@ -36,7 +34,8 @@ $params = [];
 
 if ($is_global_view) {
     // --- MODO GLOBAL ---
-    if ($_SESSION['rol_usuario'] != 1) { // Si no es Admin, filtrar por promotora
+    // Si no es Admin (Rol 1), filtrar por sus grupos asignados
+    if ($_SESSION['rol_usuario'] != 1) { 
         $sql .= " AND g.promotora_id = ?";
         $params[] = $_SESSION['user_id'];
     }
@@ -47,7 +46,7 @@ if ($is_global_view) {
     $sql .= " AND mc.ciclo_id = ?";
     $params[] = $ciclo_id;
 
-    // Info para el título
+    // Obtener info del ciclo para el título
     $stmt_info = $pdo->prepare("SELECT c.nombre as ciclo, g.nombre as grupo, g.id as grupo_id 
                                 FROM Ciclo c JOIN Grupo g ON c.grupo_id = g.id WHERE c.id = ?");
     $stmt_info->execute([$ciclo_id]);
@@ -70,17 +69,22 @@ $miembros = $stmt->fetchAll();
     <div>
         <?php if (!$is_global_view && $datos_ciclo): ?>
             <?php 
-                // Lógica de retorno
+                // Lógica de retorno según origen
+                // Default: Volver al Grupo
                 $link_volver = "../grupos/ver.php?id=" . $datos_ciclo['grupo_id'];
                 $texto_volver = "Volver al Grupo";
 
-                if ($origen == 'ciclos_global') {
-                    // Si vino del listado global de ciclos
+                if ($origen == 'mis_grupos') {
+                    // Regresar a Mis Grupos (Para la Directiva)
+                    $link_volver = "../../modules/mi_perfil/mis_grupos.php";
+                    $texto_volver = "Volver a Mis Grupos";
+                } elseif ($origen == 'ciclos_global') {
+                    // Regresar al listado global de ciclos
                     $link_volver = "../grupos/ciclos_global.php";
-                    $texto_volver = "Volver a Gestión Global de Ciclos";
+                    $texto_volver = "Volver a Ciclos";
                 } elseif ($origen == 'detalle_ciclo') {
-                    // Si vino del detalle del ciclo específico
-                    // Truco: Le pasamos '&origen=global' de regreso por si quiere seguir subiendo
+                    // Regresar al detalle específico del ciclo
+                    // Truco: mantenemos el origen 'global' si veníamos de ahí
                     $link_volver = "../grupos/ver_ciclo.php?id=" . $ciclo_id . "&origen=global";
                     $texto_volver = "Volver al Ciclo";
                 }
@@ -104,6 +108,7 @@ $miembros = $stmt->fetchAll();
 </div>
 
 <div class="card">
+    
     <div class="form-group" style="max-width: 300px; margin-bottom: 15px;">
         <input type="text" id="buscador" placeholder="Buscar..." onkeyup="filtrarTabla()" style="padding: 8px 12px;">
     </div>

@@ -18,12 +18,22 @@ $reuniones = $stmt_r->fetchAll();
 
 // Calcular siguiente número de reunión
 $siguiente_numero = count($reuniones) + 1;
+
+// DETECTAR ORIGEN
+$origen = isset($_GET['origen']) ? $_GET['origen'] : '';
+$link_volver = "index.php"; // Por defecto al global (para Admin)
+$texto_volver = "Volver a Selección";
+
+if ($origen == 'mis_grupos') {
+    $link_volver = "../../modules/mi_perfil/mis_grupos.php";
+    $texto_volver = "Volver a Mis Grupos";
+}
 ?>
 
 <div class="flex-between" style="margin-bottom: 20px;">
     <div>
-        <a href="index.php" class="btn btn-secondary">
-            <i class='bx bx-arrow-back'></i> Volver a Seleccion
+        <a href="<?php echo $link_volver; ?>" class="btn btn-secondary">
+            <i class='bx bx-arrow-back'></i> <?php echo $texto_volver; ?>
         </a>
         <h2 style="margin-top: 5px;">Reuniones: <?php echo htmlspecialchars($ciclo['grupo']); ?></h2>
     </div>

@@ -14,17 +14,21 @@ $ciclo = $stmt->fetch();
 
 // 2. DETECTAR ORIGEN PARA EL BOTÓN VOLVER (LÓGICA CORREGIDA)
 // Verificamos si en la URL viene ?origen=global
+// ... 
 $origen = isset($_GET['origen']) ? $_GET['origen'] : 'grupo'; 
 
 if ($origen == 'global') {
-    // Si viene de global, regresamos a ciclos_global.php
     $link_volver = "ciclos_global.php";
-    $texto_volver = "Volver a Gestión Global de Ciclos";
+    $texto_volver = "Volver a Gestión Global";
+} elseif ($origen == 'mis_grupos') {
+    // CORRECCIÓN: Regresar al grupo MANTENIENDO el origen
+    $link_volver = "ver.php?id=" . $ciclo['grupo_id'] . "&origen=mis_grupos";
+    $texto_volver = "Volver al Grupo";
 } else {
-    // Si no, regresamos al grupo
     $link_volver = "ver.php?id=" . $ciclo['grupo_id'];
     $texto_volver = "Volver al Grupo";
 }
+// ...
 
 // 3. INFO DE MULTAS
 $stmt_m = $pdo->prepare("SELECT cm.nombre, conf.monto_aplicar 

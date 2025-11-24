@@ -3,6 +3,16 @@
 require_once '../../includes/header.php';
 require_once '../../config/db.php';
 
+// --- BLOQUE DE SEGURIDAD ---
+// Si el usuario NO es Admin (1) NI Promotora (2), lo sacamos de aquí.
+// Las directivas deben entrar por "Mis Grupos".
+if ($_SESSION['rol_usuario'] > 2) {
+    header("Location: ../mi_perfil/mis_grupos.php");
+    exit;
+}
+// ---------------------------
+
+// ... resto del código (Consultas SQL, etc) ...
 // 1. OBTENER CICLOS ACTIVOS (Según permisos)
 $rol = $_SESSION['rol_usuario'];
 $uid = $_SESSION['user_id'];
