@@ -6,6 +6,8 @@ require_once '../../config/db.php';
 if (!isset($_GET['ciclo_id'])) { header("Location: index.php"); exit; }
 $ciclo_id = $_GET['ciclo_id'];
 
+
+
 // 1. DATOS DEL CICLO
 $stmt_c = $pdo->prepare("SELECT c.*, g.nombre as grupo FROM Ciclo c JOIN Grupo g ON c.grupo_id = g.id WHERE c.id = ?");
 $stmt_c->execute([$ciclo_id]);
@@ -86,14 +88,17 @@ $utilidad_neta = $total_ganancia - $total_gastos;
 $total_activos = $caja_actual + $dinero_en_calle;
 $total_pasivo_patrimonio = $total_ahorros + $utilidad_neta;
 $diferencia_contable = $total_activos - $total_pasivo_patrimonio;
+
+// CAPTURAR ORIGEN PARA VOLVER A LA PESTAÑA CORRECTA
+$origen = isset($_GET['origen']) ? $_GET['origen'] : 'ACTIVO';
 ?>
 
 <div class="flex-between print-hide" style="margin-bottom: 20px;">
-    <a href="index.php" class="btn btn-secondary">
+    <a href="index.php?estado=<?php echo $origen; ?>" class="btn btn-secondary">
         <i class='bx bx-arrow-back'></i> Volver a Reportes
     </a>
     <button onclick="window.print()" class="btn btn-primary">
-        <i class='bx bx-printer'></i> IMPRIMIR BALANCE
+        <i class='bx bx-printer'></i> IMPRIMIR REPORTE
     </button>
 </div>
 

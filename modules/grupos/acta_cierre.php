@@ -6,6 +6,9 @@ require_once '../../config/db.php';
 if (!isset($_GET['ciclo_id'])) { header("Location: index.php"); exit; }
 $ciclo_id = $_GET['ciclo_id'];
 
+// DETECTAR ORIGEN
+$origen = isset($_GET['origen']) ? $_GET['origen'] : '';
+
 // 1. DATOS DEL CICLO
 $stmt = $pdo->prepare("SELECT c.*, g.nombre as grupo FROM Ciclo c JOIN Grupo g ON c.grupo_id = g.id WHERE c.id = ?");
 $stmt->execute([$ciclo_id]);
@@ -59,9 +62,24 @@ $socios = $stmt_s->fetchAll();
 ?>
 
 <div class="flex-between print-hide" style="margin-bottom: 20px;">
-    <a href="ver.php?id=<?php echo $ciclo['grupo_id']; ?>" class="btn btn-secondary">
-        <i class='bx bx-arrow-back'></i> Volver al Grupo
+    <?php 
+        // LÓGICA DEL BOTÓN VOLVER
+        if (strpos($origen, 'reportes_') !== false) {
+            // Si viene de reportes, extraemos el estado (ej: reportes_LIQUIDADO -> LIQUIDADO)
+            $estado_filtro = str_replace('reportes_', '', $origen);
+            $link_volver = "../reportes/index.php?estado=" . $estado_filtro;
+            $texto_volver = "Volver a Reportes";
+        } else {
+            // Por defecto vuelve al grupo
+            $link_volver = "ver.php?id=" . $ciclo['grupo_id'];
+            $texto_volver = "Volver al Grupo";
+        }
+    ?>
+    
+    <a href="<?php echo $link_volver; ?>" class="btn btn-secondary">
+        <i class='bx bx-arrow-back'></i> <?php echo $texto_volver; ?>
     </a>
+    
     <button onclick="window.print()" class="btn btn-primary">
         <i class='bx bx-printer'></i> IMPRIMIR ACTA DE LIQUIDACIÓN
     </button>

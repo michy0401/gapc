@@ -21,11 +21,17 @@ $sql = "SELECT t.*, r.fecha, r.numero_reunion, u.nombre_completo
 $stmt = $pdo->prepare($sql);
 $stmt->execute([$ciclo_id]);
 $movimientos = $stmt->fetchAll();
+// CAPTURAR ORIGEN PARA VOLVER A LA PESTAÑA CORRECTA
+$origen = isset($_GET['origen']) ? $_GET['origen'] : 'ACTIVO';
 ?>
 
 <div class="flex-between print-hide" style="margin-bottom: 20px;">
-    <a href="index.php" class="btn btn-secondary"><i class='bx bx-arrow-back'></i> Volver</a>
-    <button onclick="window.print()" class="btn btn-primary"><i class='bx bx-printer'></i> IMPRIMIR REPORTE</button>
+    <a href="index.php?estado=<?php echo $origen; ?>" class="btn btn-secondary">
+        <i class='bx bx-arrow-back'></i> Volver a Reportes
+    </a>
+    <button onclick="window.print()" class="btn btn-primary">
+        <i class='bx bx-printer'></i> IMPRIMIR REPORTE
+    </button>
 </div>
 
 <div class="documento-impresion">

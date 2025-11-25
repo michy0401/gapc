@@ -1,9 +1,9 @@
 <?php
-// Detectar ruta
+// Detectar ruta base dinámicamente
 $path_parts = explode('/', trim($_SERVER['SCRIPT_NAME'], '/'));
 $base_url = "/" . $path_parts[0];
 
-// Cargar constantes de roles
+// Cargar constantes de roles para usar ROL_ADMIN, etc.
 require_once 'permissions.php'; 
 $rol = $_SESSION['rol_usuario'] ?? 0;
 ?>
@@ -31,6 +31,14 @@ $rol = $_SESSION['rol_usuario'] ?? 0;
         </li>
 
         <?php if ($rol == ROL_ADMIN || $rol == ROL_PROMOTORA): ?>
+
+            <?php if ($rol == ROL_ADMIN): ?>
+                <li>
+                    <a href="<?php echo $base_url; ?>/modules/usuarios/index.php">
+                        <i class='bx bxs-id-card'></i> <span>Usuarios</span>
+                    </a>
+                </li>
+            <?php endif; ?>
             <li>
                 <a href="<?php echo $base_url; ?>/modules/grupos/index.php">
                     <i class='bx bxs-group'></i> <span>Grupos</span>

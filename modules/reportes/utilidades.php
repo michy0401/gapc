@@ -47,11 +47,17 @@ if ($total_ahorro > 0) {
 $stmt_s = $pdo->prepare("SELECT mc.*, u.nombre_completo FROM Miembro_Ciclo mc JOIN Usuario u ON mc.usuario_id = u.id WHERE mc.ciclo_id = ? ORDER BY u.nombre_completo");
 $stmt_s->execute([$ciclo_id]);
 $socios = $stmt_s->fetchAll();
+// CAPTURAR ORIGEN PARA VOLVER A LA PESTAÑA CORRECTA
+$origen = isset($_GET['origen']) ? $_GET['origen'] : 'ACTIVO';
 ?>
 
 <div class="flex-between print-hide" style="margin-bottom: 20px;">
-    <a href="index.php" class="btn btn-secondary"><i class='bx bx-arrow-back'></i> Volver</a>
-    <button onclick="window.print()" class="btn btn-primary"><i class='bx bx-printer'></i> IMPRIMIR</button>
+    <a href="index.php?estado=<?php echo $origen; ?>" class="btn btn-secondary">
+        <i class='bx bx-arrow-back'></i> Volver a Reportes
+    </a>
+    <button onclick="window.print()" class="btn btn-primary">
+        <i class='bx bx-printer'></i> IMPRIMIR REPORTE
+    </button>
 </div>
 
 <div class="documento-impresion">

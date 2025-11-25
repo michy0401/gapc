@@ -43,11 +43,17 @@ foreach($prestamos as $p) {
 }
 
 $porcentaje_mora = ($total_prestamos_count > 0) ? ($prestamos_en_mora / $total_prestamos_count) * 100 : 0;
+
+$origen = isset($_GET['origen']) ? $_GET['origen'] : 'ACTIVO';
 ?>
 
 <div class="flex-between print-hide" style="margin-bottom: 20px;">
-    <a href="index.php" class="btn btn-secondary"><i class='bx bx-arrow-back'></i> Volver</a>
-    <button onclick="window.print()" class="btn btn-primary"><i class='bx bx-printer'></i> IMPRIMIR CARTERA</button>
+    <a href="index.php?estado=<?php echo $origen; ?>" class="btn btn-secondary">
+        <i class='bx bx-arrow-back'></i> Volver a Reportes
+    </a>
+    <button onclick="window.print()" class="btn btn-primary">
+        <i class='bx bx-printer'></i> IMPRIMIR REPORTE
+    </button>
 </div>
 
 <div class="documento-impresion">
