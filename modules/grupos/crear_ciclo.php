@@ -109,7 +109,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label>Duración (Meses):</label>
                     <select name="duracion" required>
                         <option value="6">6 Meses</option>
-                        <option value="9">9 Meses</option>
                         <option value="12" selected>12 Meses (1 Año)</option>
                     </select>
                 </div>

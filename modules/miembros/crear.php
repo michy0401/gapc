@@ -179,10 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Ahorro Inicial ($):</label>
-                        <input type="number" name="saldo_inicial" step="0.01" value="0.00">
-                    </div>
+                    
                 </div>
 
                 <div class="flex-between" style="margin-top: 20px;">
@@ -249,10 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Ahorro Inicial ($):</label>
-                        <input type="number" name="saldo_inicial" step="0.01" value="0.00">
-                    </div>
+
                 </div>
 
                 <br>

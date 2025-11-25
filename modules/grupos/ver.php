@@ -105,10 +105,10 @@ if ($ciclo_activo_id) {
                                 <?php 
                                 $bg_color = '#FAFAFA'; $text_color = '#616161';
                                 switch($m['cargo']) {
-                                    case 'Presidenta': $bg_color = '#E8F5E9'; $text_color = '#2E7D32'; break;
-                                    case 'Tesorera': $bg_color = '#E3F2FD'; $text_color = '#1565C0'; break;
-                                    case 'Secretaria': $bg_color = '#FFF3E0'; $text_color = '#EF6C00'; break;
-                                    case 'Responsable de Llave': $bg_color = '#F3E5F5'; $text_color = '#7B1FA2'; break;
+                                    case 'Presidente/a': $bg_color = '#E8F5E9'; $text_color = '#2E7D32'; break;
+                                    case 'Tesorero/a': $bg_color = '#E3F2FD'; $text_color = '#1565C0'; break;
+                                    case 'Secretario/a': $bg_color = '#FFF3E0'; $text_color = '#EF6C00'; break;
+                                    case 'Encargado/a de la Llave': $bg_color = '#F3E5F5'; $text_color = '#7B1FA2'; break;
                                 }
                                 ?>
                                 <span class="badge" style="background: <?php echo $bg_color; ?>; color: <?php echo $text_color; ?>; border: 1px solid <?php echo $text_color; ?>20;">

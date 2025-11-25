@@ -157,10 +157,10 @@ $miembros = $stmt->fetchAll();
                                 <?php 
                                     $bg = '#FAFAFA'; $col = '#666';
                                     switch($m['cargo']) {
-                                        case 'Presidenta': $bg='#E8F5E9'; $col='#2E7D32'; break;
-                                        case 'Tesorera': $bg='#E3F2FD'; $col='#1565C0'; break;
-                                        case 'Secretaria': $bg='#FFF3E0'; $col='#EF6C00'; break;
-                                        case 'Responsable de Llave': $bg='#F3E5F5'; $col='#7B1FA2'; break;
+                                        case 'Presidente/a': $bg='#E8F5E9'; $col='#2E7D32'; break;
+                                        case 'Tesorero/a': $bg='#E3F2FD'; $col='#1565C0'; break;
+                                        case 'Secretario/a': $bg='#FFF3E0'; $col='#EF6C00'; break;
+                                        case 'Encargado/a de la Llave': $bg='#F3E5F5'; $col='#7B1FA2'; break;
                                     }
                                 ?>
                                 <span class="badge" style="background: <?php echo $bg; ?>; color: <?php echo $col; ?>; border: 1px solid <?php echo $col; ?>20;">

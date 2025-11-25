@@ -1,8 +1,13 @@
 <?php
-
+// modules/grupos/index.php
 require_once '../../includes/header.php';
 require_once '../../config/db.php'; 
 
+// 1. Obtener datos de la sesión actual
+$rol_usuario = $_SESSION['rol_usuario'];
+$id_usuario = $_SESSION['user_id'];
+
+// 2. Construir la consulta base
 $sql = "SELECT 
             g.id, 
             g.nombre, 
@@ -12,14 +17,27 @@ $sql = "SELECT
         FROM Grupo g
         JOIN Distrito d ON g.distrito_id = d.id
         JOIN Usuario u ON g.promotora_id = u.id
-        ORDER BY g.id DESC";
+        WHERE 1=1"; // Truco SQL para agregar condiciones dinámicamente
 
-$stmt = $pdo->query($sql);
+$params = [];
+
+// 3. APLICAR FILTRO DE SEGURIDAD (Si es Promotora)
+if ($rol_usuario == 2) { // 2 = Rol de Promotora
+    $sql .= " AND g.promotora_id = ?";
+    $params[] = $id_usuario;
+}
+
+$sql .= " ORDER BY g.id DESC";
+
+// 4. Ejecutar la consulta preparada
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
 $grupos = $stmt->fetchAll();
 ?>
 
 <div class="flex-between" style="margin-bottom: 20px;">
     <h2>Gestión de Grupos</h2>
+    
     <a href="crear.php" class="btn btn-primary">
         <i class='bx bx-plus'></i> Nuevo Grupo
     </a>
@@ -69,13 +87,12 @@ $grupos = $stmt->fetchAll();
         <?php else: ?>
             <div class="text-center" style="padding: 40px; color: var(--text-muted);">
                 <i class='bx bx-folder-open' style="font-size: 3rem;"></i>
-                <p>No hay grupos registrados aún.</p>
+                <p>No tiene grupos asignados.</p>
             </div>
         <?php endif; ?>
     </div>
 </div>
 
 <?php
-
 require_once '../../includes/footer.php';
 ?>
