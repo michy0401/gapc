@@ -45,7 +45,7 @@ INSERT INTO Distrito (nombre) VALUES
 -- Usuario: admin@gapc.com
 -- Pass: admin123 (Hash generado con BCRYPT)
 INSERT INTO Usuario (id, rol_id, nombre_completo, email, password, estado) VALUES 
-(1, 1, 'Administrador Principal', 'admin@gapc.com', '$2y$10$vI8aWBnW3fID.ZQ4/zo1G.q1lRps.9cGLcZEiGDMVr5yUP1KUOYTa', 'ACTIVO');
+(1, 1, 'Administrador Principal', 'admin@gapc.com', '$2a$12$HnuF8bfiFw9T8rqYUMs2b.YJM.Fdn2ZQ.LS10FFxEFdh0yT1C/l7a', 'ACTIVO');
 
 SET FOREIGN_KEY_CHECKS = 1; -- Reactivar seguridad
 
