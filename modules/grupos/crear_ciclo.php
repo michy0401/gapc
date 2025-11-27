@@ -26,9 +26,20 @@ $mensaje = '';
 // 3. PROCESAR FORMULARIO
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
+        // 1. INICIAR TRANSACCIÓN PRIMERO (Para que el rollback funcione siempre)
         $pdo->beginTransaction();
 
-        // A. Datos básicos
+        // 2. VALIDACIÓN: VERIFICAR CICLO ACTIVO
+        $stmt_check = $pdo->prepare("SELECT nombre FROM Ciclo WHERE grupo_id = ? AND estado = 'ACTIVO'");
+        $stmt_check->execute([$grupo_id]);
+        $ciclo_existente = $stmt_check->fetch();
+
+        if ($ciclo_existente) {
+            // Si hay error, lanzamos excepción (el catch hará rollback)
+            throw new Exception("Este grupo ya tiene un ciclo en curso (" . $ciclo_existente['nombre'] . "). Debe liquidarlo antes de iniciar uno nuevo.");
+        }
+
+        // 3. A. Datos básicos
         $nombre = $_POST['nombre'];
         $fecha_inicio = $_POST['fecha_inicio'];
         $duracion = $_POST['duracion'];
@@ -36,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         $fecha_fin = date('Y-m-d', strtotime($fecha_inicio . " + $duracion months"));
 
-        // B. Insertar el Ciclo
+        // 4. B. Insertar el Ciclo
         $sql_ciclo = "INSERT INTO Ciclo (grupo_id, nombre, fecha_inicio, fecha_fin_estimada, duracion, tasa_interes_mensual, estado) 
                       VALUES (?, ?, ?, ?, ?, ?, 'ACTIVO')";
         $stmt = $pdo->prepare($sql_ciclo);
@@ -44,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         $nuevo_ciclo_id = $pdo->lastInsertId();
 
-        // C. Guardar Configuración de Multas
+        // 5. C. Guardar Configuración de Multas
         if (isset($_POST['multas_activas'])) {
             $sql_conf = "INSERT INTO Configuracion_Multas_Ciclo (ciclo_id, catalogo_multa_id, monto_aplicar) VALUES (?, ?, ?)";
             $stmt_conf = $pdo->prepare($sql_conf);
@@ -55,15 +66,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
+        // 6. CONFIRMAR CAMBIOS
         $pdo->commit();
 
-        // REDIRECCIÓN CORREGIDA: Devolvemos la etiqueta de origen
+        // REDIRECCIÓN CORREGIDA
         echo "<script>window.location.href='ver.php?id=$grupo_id&origen=$origen';</script>";
         exit;
 
     } catch (Exception $e) {
-        $pdo->rollBack();
-        $mensaje = "Error al crear ciclo: " . $e->getMessage();
+        // Ahora sí es seguro hacer rollback porque beginTransaction fue lo primero
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        $mensaje = "Error: " . $e->getMessage();
     }
 }
 ?>

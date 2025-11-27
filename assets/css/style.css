@@ -25,11 +25,22 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Aseguramos que html y body ocupen el 100% para evitar cortes */
+html, body {
+    height: 100%;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--bg-page);
     color: var(--text-main);
-    display: flex;
+    
+    /* ✅ CORREGIDO: Eliminamos 'display: flex' aquí. 
+       El sidebar es 'fixed', así que el body no necesita ser flex.
+       Esto evita conflictos con el scrollbar. */
+    display: block; 
+    position: relative;
+
     min-height: 100vh;
     overflow-x: hidden;
     font-size: 16px;
@@ -39,20 +50,22 @@ a { text-decoration: none; color: inherit; }
 h1, h2, h3 { margin-bottom: 1rem; font-weight: 700; color: var(--color-brand); }
 
 /* =========================================
-   2. LAYOUT & SIDEBAR (La Estructura)
+   2. LAYOUT & SIDEBAR (Fixed + Scroll)
    ========================================= */
 .sidebar {
     width: var(--sidebar-width);
     background-color: var(--bg-sidebar);
     color: white;
-    position: fixed;
-    height: 100vh;
-    left: 0;
+    position: fixed; /* Se queda fijo al hacer scroll */
     top: 0;
-    display: flex;
+    left: 0;
+    height: 100vh;       /* Altura base */
+    height: 100dvh;      /* Altura dinámica para móviles modernos */
+    display: flex;       /* Flex interno para header/menu/footer */
     flex-direction: column;
     z-index: 1000;
     transition: left 0.3s ease;
+    overflow: hidden;    /* Ocultamos el scroll del contenedor principal */
 }
 
 .sidebar-header {
@@ -60,12 +73,28 @@ h1, h2, h3 { margin-bottom: 1rem; font-weight: 700; color: var(--color-brand); }
     text-align: center;
     border-bottom: 1px solid rgba(255,255,255,0.1);
     background-color: rgba(0,0,0,0.1);
+    flex-shrink: 0;      /* Evita que el header se encoja */
 }
 
 .sidebar-menu {
     list-style: none;
     padding: 20px 10px;
-    flex-grow: 1;
+    flex-grow: 1;        /* Ocupa todo el espacio disponible */
+    overflow-y: auto;    /* Scroll vertical SOLO en el menú */
+    min-height: 0;       
+    
+    /* Scrollbar estilizado (Firefox) */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
+}
+
+/* Scrollbar estilizado (Webkit: Chrome, Safari) */
+.sidebar-menu::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar-menu::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,0.3);
+    border-radius: 4px;
 }
 
 .sidebar-menu li { margin-bottom: 5px; }
@@ -89,14 +118,23 @@ h1, h2, h3 { margin-bottom: 1rem; font-weight: 700; color: var(--color-brand); }
 .sidebar-footer {
     padding: 20px;
     border-top: 1px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
+    background-color: var(--bg-sidebar);
 }
 
+/* ✅ CORREGIDO: Main Content */
 .main-content {
-    margin-left: var(--sidebar-width);
-    width: calc(100% - var(--sidebar-width));
+    margin-left: var(--sidebar-width); /* Empujamos el contenido a la derecha */
+    
+    /* Eliminamos 'width: calc(...)'. Al ser un bloque (div), 
+       automáticamente llenará el espacio restante (100% - margin).
+       Esto soluciona el error visual cuando aparece el scrollbar. */
+    width: auto; 
+    
     display: flex;
     flex-direction: column;
-    transition: margin-left 0.3s ease, width 0.3s ease;
+    transition: margin-left 0.3s ease; 
+    min-height: 100vh; /* Asegura que cubra la pantalla */
 }
 
 .topbar {
@@ -107,9 +145,10 @@ h1, h2, h3 { margin-bottom: 1rem; font-weight: 700; color: var(--color-brand); }
     align-items: center;
     justify-content: space-between;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    position: sticky;
+    position: sticky; /* Se queda pegado arriba al hacer scroll */
     top: 0;
     z-index: 900;
+    width: 100%; /* Asegura que llene el ancho disponible */
 }
 
 .mobile-menu-btn {
@@ -130,14 +169,14 @@ h1, h2, h3 { margin-bottom: 1rem; font-weight: 700; color: var(--color-brand); }
 
 .page-content {
     padding: 30px;
-    flex-grow: 1;
+    flex-grow: 1; /* Empuja el footer (si hubiera) hacia abajo */
 }
 
 /* =========================================
-   3. COMPONENTES DE UI (LO QUE FALTABA) 🚨
+   3. COMPONENTES DE UI
    ========================================= */
 
-/* --- Tarjetas Blancas --- */
+/* --- Tarjetas --- */
 .card {
     background: var(--bg-card);
     padding: 25px;
@@ -147,9 +186,10 @@ h1, h2, h3 { margin-bottom: 1rem; font-weight: 700; color: var(--color-brand); }
     border: 1px solid #e1e4e8;
 }
 
-/* --- Utilidades Flex --- */
+/* --- Utilidades --- */
 .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.text-center { text-align: center; }
 
 /* --- Botones --- */
 .btn {
@@ -219,7 +259,7 @@ input:focus, select:focus {
     width: 100%;
     border-collapse: collapse;
     background: white;
-    min-width: 600px; /* Para forzar scroll en móvil si es muy chica */
+    min-width: 600px;
 }
 
 .table th {
@@ -242,14 +282,13 @@ input:focus, select:focus {
 .table tr:nth-child(even) { background-color: #f9f9f9; }
 .table tr:hover { background-color: #f1f1f1; }
 
-/* --- Badges (Etiquetas) --- */
+/* --- Badges --- */
 .badge { padding: 5px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
 .badge-danger { background: #ffebee; color: var(--color-danger); border: 1px solid #ffcdd2; }
-.text-center { text-align: center; }
 
 
 /* =========================================
-   4. TARJETAS DASHBOARD (HOME)
+   4. TARJETAS DASHBOARD
    ========================================= */
 .grid-dashboard {
     display: grid;
@@ -292,28 +331,42 @@ input:focus, select:focus {
    5. RESPONSIVE MÓVIL
    ========================================= */
 @media (max-width: 768px) {
-    .sidebar { left: -100%; width: 80%; max-width: 300px; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
+    .sidebar { 
+        left: -100%; 
+        width: 80%; 
+        max-width: 300px; 
+        box-shadow: 2px 0 10px rgba(0,0,0,0.2); 
+    }
     .sidebar.active { left: 0; }
-    .main-content { margin-left: 0; width: 100%; }
+    
+    .main-content { 
+        margin-left: 0; 
+        width: 100%; /* Forzamos ancho completo en móvil */
+    }
+    
     .mobile-menu-btn { display: block; }
+    
     .overlay {
         display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.5); z-index: 999;
     }
     .overlay.active { display: block; }
-    .user-name { display: none; } /* Ocultar nombre en móvil */
+    
+    .user-name { display: none; }
 }
 
 /* =========================================
-   6. ESTILOS ESPECÍFICOS DEL LOGIN
+   6. LOGIN (Páginas independientes)
    ========================================= */
 body.login-page {
-    background-color: var(--color-brand); /* Fondo Azul Institucional */
-    background-image: linear-gradient(135deg, var(--color-brand) 0%, #0D47A1 100%); /* Degradado sutil */
-    display: flex;
-    align-items: center;     /* Centrar verticalmente */
-    justify-content: center; /* Centrar horizontalmente */
-    height: 100vh;           /* Ocupar toda la altura de la pantalla */
+    /* Como quitamos flex del body general, lo reponemos SOLO para el login */
+    display: flex; 
+    align-items: center;
+    justify-content: center;
+    
+    background-color: var(--color-brand);
+    background-image: linear-gradient(135deg, var(--color-brand) 0%, #0D47A1 100%);
+    height: 100vh;
     margin: 0;
 }
 
@@ -321,28 +374,16 @@ body.login-page {
     background: white;
     padding: 40px;
     width: 90%;
-    max-width: 400px;       /* Que no sea ni muy ancho ni muy angosto */
-    border-radius: 16px;    /* Bordes más suaves */
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* Sombra de elevación */
+    max-width: 400px;
+    border-radius: 16px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     text-align: center;
+    animation: fadeInUp 0.5s ease-out;
 }
 
-.login-header {
-    margin-bottom: 30px;
-}
-
-.login-header h1 {
-    color: var(--color-brand);
-    font-size: 2rem;
-    margin: 0;
-    font-weight: 800;
-}
-
-.login-header p {
-    color: var(--text-muted);
-    margin-top: 5px;
-    font-size: 0.95rem;
-}
+.login-header { margin-bottom: 30px; }
+.login-header h1 { color: var(--color-brand); font-size: 2rem; margin: 0; font-weight: 800; }
+.login-header p { color: var(--text-muted); margin-top: 5px; font-size: 0.95rem; }
 
 .login-input {
     background-color: #F5F7FA;
@@ -354,11 +395,6 @@ body.login-page {
     background-color: white;
     border-color: var(--color-brand);
     box-shadow: 0 0 0 4px rgba(26, 35, 126, 0.1);
-}
-
-/* Animación de entrada suave */
-.login-card {
-    animation: fadeInUp 0.5s ease-out;
 }
 
 @keyframes fadeInUp {

@@ -39,7 +39,24 @@ foreach($movimientos as $mov) {
     if ($mov['tipo_movimiento'] == 'PAGO_PRESTAMO_INTERES') $interes_pagado += $mov['monto'];
 }
 
-$saldo_pendiente = $p['monto_aprobado'] - $capital_pagado;
+// A. Capital Pendiente
+$saldo_capital = $p['monto_aprobado'] - $capital_pagado;
+
+// B. Interés Pendiente (Total esperado - Lo que ya pagó)
+// Nota: Si ya pagó todo el interés o más, ponemos 0
+$total_interes_esperado = $p['monto_interes_fijo_mensual'] * $p['plazo_meses'];
+$saldo_interes = max(0, $total_interes_esperado - $interes_pagado);
+
+// C. Deuda Total (Lo que tiene que sacar del bolsillo para quedar a cero hoy)
+// Si el estado es FINALIZADO, forzamos a 0 por si acaso hay decimales sueltos
+if ($p['estado'] == 'FINALIZADO' || $saldo_capital <= 0.01) {
+    $deuda_total = 0;
+    $saldo_capital = 0;
+    $saldo_interes = 0;
+} else {
+    $deuda_total = $saldo_capital + $saldo_interes;
+}
+
 $progreso = ($capital_pagado / $p['monto_aprobado']) * 100;
 ?>
 
@@ -102,17 +119,30 @@ $progreso = ($capital_pagado / $p['monto_aprobado']) * 100;
             <h3 style="font-size: 1.1rem; color: var(--color-brand);">Estado Actual</h3>
             
             <div style="background: #F5F7FA; padding: 20px; border-radius: 12px; text-align: center;">
-                <small style="text-transform: uppercase; color: #666;">Saldo Pendiente (Capital)</small>
-                <div style="font-size: 2.5rem; font-weight: bold; color: <?php echo $saldo_pendiente > 0 ? 'var(--color-danger)' : 'var(--color-success)'; ?>;">
-                    $<?php echo number_format($saldo_pendiente, 2); ?>
+                
+                <small style="text-transform: uppercase; color: #666; font-weight: bold;">Deuda Total (Capital + Interés)</small>
+                <div style="font-size: 3rem; font-weight: bold; color: <?php echo $deuda_total > 0 ? 'var(--color-danger)' : 'var(--color-success)'; ?>;">
+                    $<?php echo number_format($deuda_total, 2); ?>
                 </div>
                 
-                <div style="margin-top: 15px;">
-                    <small>Progreso de Pago</small>
-                    <div style="width: 100%; background: #ddd; height: 10px; border-radius: 5px; margin-top: 5px;">
-                        <div style="width: <?php echo $progreso; ?>%; background: var(--color-success); height: 10px; border-radius: 5px;"></div>
+                <div style="margin-top: 5px; font-size: 0.9rem; color: #555;">
+                    (Capital: <strong>$<?php echo number_format($saldo_capital, 2); ?></strong> + 
+                     Interés: <strong>$<?php echo number_format($saldo_interes, 2); ?></strong>)
+                </div>
+
+                <div style="margin: 15px 0; border-top: 1px solid #ddd; padding: 10px 0;">
+                    <div class="flex-between" style="font-size: 0.85rem;">
+                        <span>Interés Pagado:</span>
+                        <strong style="color: var(--color-warning);">$<?php echo number_format($interes_pagado, 2); ?></strong>
                     </div>
-                    <small style="display:block; margin-top: 5px;"><?php echo number_format($progreso, 0); ?>% Cubierto</small>
+                </div>
+                
+                <div>
+                    <small>Progreso Capital</small>
+                    <div style="width: 100%; background: #ddd; height: 8px; border-radius: 5px; margin-top: 5px;">
+                        <div style="width: <?php echo $progreso; ?>%; background: var(--color-success); height: 8px; border-radius: 5px;"></div>
+                    </div>
+                    <small style="display:block; margin-top: 2px; font-size: 0.8rem;"><?php echo number_format($progreso, 0); ?>% Pagado</small>
                 </div>
             </div>
         </div>
@@ -133,7 +163,7 @@ $progreso = ($capital_pagado / $p['monto_aprobado']) * 100;
                     <th>Descripción</th>
                     <th style="text-align: right;">Interés Pagado</th>
                     <th style="text-align: right;">Capital Abonado</th>
-                    <th style="text-align: right;">Saldo Restante</th>
+                    <th style="text-align: right;">Saldo Capital</th>
                 </tr>
             </thead>
             <tbody>
@@ -188,8 +218,8 @@ $progreso = ($capital_pagado / $p['monto_aprobado']) * 100;
             <tfoot>
                 <tr style="background: #f0f0f0; font-weight: bold;">
                     <td colspan="3" class="text-right">TOTALES PAGADOS:</td>
-                    <td class="text-right">$<?php echo number_format($interes_pagado, 2); ?></td>
-                    <td class="text-right">$<?php echo number_format($capital_pagado, 2); ?></td>
+                    <td class="text-right" style="color: #F57F17;">$<?php echo number_format($interes_pagado, 2); ?></td>
+                    <td class="text-right" style="color: #2E7D32;">$<?php echo number_format($capital_pagado, 2); ?></td>
                     <td></td>
                 </tr>
             </tfoot>
@@ -200,10 +230,40 @@ $progreso = ($capital_pagado / $p['monto_aprobado']) * 100;
 
 <style>
     .text-right { text-align: right; }
+
+    /* ESTILOS PARA PANTALLA (MONITOR) */
+    .documento-impresion {
+        background: white; 
+        padding: 30px; 
+        /* CAMBIO: Quitamos el max-width fijo para que use el 100% disponible del contenedor padre */
+        width: 100%; 
+        margin: 0 auto;
+        box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        /* Opcional: Si quieres que tenga un límite pero más ancho, usa max-width: 1200px; */
+    }
+
+    /* ESTILOS PARA IMPRESORA (PAPEL) */
     @media print {
-        .print-hide, .sidebar { display: none !important; }
-        .main-content { margin: 0; width: 100%; padding: 0; }
-        .card { box-shadow: none; border: none; }
+        .print-hide, .sidebar, .topbar { display: none !important; }
+        
+        .main-content { 
+            margin: 0; 
+            width: 100%; 
+            padding: 0; 
+        }
+        
+        .card { 
+            box-shadow: none; 
+            border: none; 
+            padding: 0;
+        }
+        
+        /* AQUÍ SÍ LIMITAMOS EL ANCHO PARA QUE SALGA COMO HOJA CARTA */
+        .documento-impresion {
+            max-width: 100%; /* O un ancho fijo si prefieres */
+            padding: 20px;
+        }
+
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 </style>

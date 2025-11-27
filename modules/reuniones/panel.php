@@ -113,9 +113,9 @@ $movimientos = $stmt_log->fetchAll();
 
 <div class="card">
     <h3><i class='bx bx-list-check'></i> Bitácora de Movimientos en Vivo</h3>
-    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+    <div class="table-responsive-wrapper" style="max-height: 400px; overflow-y: auto;">
         <?php if(count($movimientos) > 0): ?>
-            <table class="table">
+            <table class="table table-fix-custom">
                 <thead>
                     <tr>
                         <th>Socia</th>
@@ -130,22 +130,22 @@ $movimientos = $stmt_log->fetchAll();
                         $tipo_txt = str_replace('_', ' ', $m['tipo_movimiento']);
                     ?>
                         <tr>
-                            <td>
+                            <td class="wrap-text">
                                 <strong>
                                     <?php echo $m['nombre_completo'] ? htmlspecialchars($m['nombre_completo']) : 'Grupo (General)'; ?>
                                 </strong>
                             </td>
-                            <td>
+                            <td class="wrap-text">
                                 <small style="font-weight: bold; color: #666;"><?php echo $tipo_txt; ?></small>
                                 <br>
                                 <small style="color: #999;"><?php echo htmlspecialchars($m['observacion']); ?></small>
                             </td>
                             
-                            <td style="text-align: center; color: var(--color-success);">
+                            <td class="nowrap-text" style="text-align: center; color: var(--color-success);">
                                 <?php echo $es_entrada ? '+ $'.number_format($m['monto'], 2) : ''; ?>
                             </td>
 
-                            <td style="text-align: center; color: var(--color-danger);">
+                            <td class="nowrap-text" style="text-align: center; color: var(--color-danger);">
                                 <?php echo !$es_entrada ? '- $'.number_format($m['monto'], 2) : ''; ?>
                             </td>
                         </tr>
@@ -165,36 +165,40 @@ $movimientos = $stmt_log->fetchAll();
             <h4 style="color: var(--color-success); border-bottom: 2px solid var(--color-success); padding-bottom: 5px;">
                 <i class='bx bx-up-arrow-alt'></i> Dinero que Entra
             </h4>
-            <table class="table" style="margin-top: 10px;">
-                <tr>
-                    <td>Saldo Inicial (Apertura)</td>
-                    <td style="text-align: right;">$<?php echo number_format($reunion['saldo_caja_inicial'], 2); ?></td>
-                </tr>
-                <tr>
-                    <td>Ingresos del día (Ahorro/Pagos)</td>
-                    <td style="text-align: right;">+ $<?php echo number_format($total_entradas, 2); ?></td>
-                </tr>
-                <tr style="background: #E8F5E9; font-weight: bold;">
-                    <td>SUBTOTAL</td>
-                    <td style="text-align: right;">$<?php echo number_format($reunion['saldo_caja_inicial'] + $total_entradas, 2); ?></td>
-                </tr>
-            </table>
+            <div class="table-responsive-wrapper">
+                <table class="table table-fix-custom" style="margin-top: 10px;">
+                    <tr>
+                        <td class="wrap-text">Saldo Inicial (Apertura)</td>
+                        <td class="nowrap-text" style="text-align: right;">$<?php echo number_format($reunion['saldo_caja_inicial'], 2); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="wrap-text">Ingresos del día (Ahorro/Pagos)</td>
+                        <td class="nowrap-text" style="text-align: right;">+ $<?php echo number_format($total_entradas, 2); ?></td>
+                    </tr>
+                    <tr style="background: #E8F5E9; font-weight: bold;">
+                        <td class="wrap-text">SUBTOTAL</td>
+                        <td class="nowrap-text" style="text-align: right;">$<?php echo number_format($reunion['saldo_caja_inicial'] + $total_entradas, 2); ?></td>
+                    </tr>
+                </table>
+            </div>
         </div>
 
         <div>
             <h4 style="color: var(--color-danger); border-bottom: 2px solid var(--color-danger); padding-bottom: 5px;">
                 <i class='bx bx-down-arrow-alt'></i> Dinero que Sale
             </h4>
-            <table class="table" style="margin-top: 10px;">
-                <tr>
-                    <td>Salidas del día (Préstamos/Retiros)</td>
-                    <td style="text-align: right;">- $<?php echo number_format($total_salidas, 2); ?></td>
-                </tr>
-                <tr style="background: #FFEBEE; font-weight: bold;">
-                    <td>TOTAL SALIDAS</td>
-                    <td style="text-align: right;">$<?php echo number_format($total_salidas, 2); ?></td>
-                </tr>
-            </table>
+            <div class="table-responsive-wrapper">
+                <table class="table table-fix-custom" style="margin-top: 10px;">
+                    <tr>
+                        <td class="wrap-text">Salidas del día (Préstamos/Retiros)</td>
+                        <td class="nowrap-text" style="text-align: right;">- $<?php echo number_format($total_salidas, 2); ?></td>
+                    </tr>
+                    <tr style="background: #FFEBEE; font-weight: bold;">
+                        <td class="wrap-text">TOTAL SALIDAS</td>
+                        <td class="nowrap-text" style="text-align: right;">$<?php echo number_format($total_salidas, 2); ?></td>
+                    </tr>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -207,5 +211,53 @@ $movimientos = $stmt_log->fetchAll();
         </a>
     </div>
 </div>
+
+<style>
+    /* 1. Contenedor Responsivo: Controla el scroll */
+    .table-responsive-wrapper {
+        width: 100%;
+        display: block;
+        overflow-x: auto; /* Permitir scroll en móviles */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* En PC (Laptop/Desktop) quitamos el scroll porque ajustaremos la tabla */
+    @media (min-width: 992px) {
+        .table-responsive-wrapper { overflow-x: hidden; }
+    }
+
+    /* 2. Clase Maestra para arreglar las tablas */
+    .table-fix-custom {
+        width: 100%;
+        table-layout: fixed; /* Mantiene el ancho fijo de la tarjeta */
+        border-collapse: collapse;
+        /* 🚨 AQUÍ ESTÁ LA SOLUCIÓN: Sobreescribimos el min-width global */
+        min-width: 0 !important; 
+    }
+    
+    .table-fix-custom td, .table-fix-custom th {
+        padding: 8px 5px; /* Menos padding para dar espacio */
+        vertical-align: middle;
+        overflow: visible; /* Asegura que el texto se vea */
+    }
+
+    /* 3. Comportamiento del texto */
+    .wrap-text {
+        white-space: normal !important; /* Texto largo baja de línea */
+        word-wrap: break-word;
+        line-height: 1.2;
+    }
+
+    .nowrap-text {
+        white-space: nowrap !important; /* Dinero se mantiene en una línea */
+    }
+    
+    /* En móviles, devolvemos el comportamiento original si es necesario */
+    @media (max-width: 768px) {
+        .table-fix-custom {
+            min-width: 500px !important; /* Forzamos scroll en móviles muy pequeños */
+        }
+    }
+</style>
 
 <?php require_once '../../includes/footer.php'; ?>

@@ -7,30 +7,25 @@ if (!isset($_GET['ciclo_id'])) { header("Location: ../grupos/index.php"); exit; 
 $ciclo_id = $_GET['ciclo_id'];
 
 $mensaje = '';
-$tipo_mensaje = ''; // danger o success
-$vista_actual = 'BUSCAR'; // Estados: BUSCAR, ENCONTRADO, FORMULARIO_NUEVO
+$tipo_mensaje = ''; 
+$vista_actual = 'BUSCAR'; 
 $datos_usuario = null;
 $dui_busqueda = '';
 
-// OBTENER CARGOS
 $cargos = $pdo->query("SELECT * FROM Catalogo_Cargos")->fetchAll();
 
-// =================================================================================
-// LÓGICA DE PROCESAMIENTO (POST)
-// =================================================================================
+// LÓGICA DE PROCESAMIENTO
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // CASO 1: BUSCAR DUI
     if (isset($_POST['accion']) && $_POST['accion'] == 'buscar') {
         $dui_busqueda = trim($_POST['dui_search']);
         
-        // Buscar si existe el usuario
         $stmt = $pdo->prepare("SELECT * FROM Usuario WHERE dui = ?");
         $stmt->execute([$dui_busqueda]);
         $usuario_encontrado = $stmt->fetch();
 
         if ($usuario_encontrado) {
-            // Verificar si YA está en el ciclo actual
             $stmt_dup = $pdo->prepare("SELECT id FROM Miembro_Ciclo WHERE usuario_id = ? AND ciclo_id = ?");
             $stmt_dup->execute([$usuario_encontrado['id'], $ciclo_id]);
             
@@ -49,14 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    // CASO 2: INSCRIBIR USUARIO EXISTENTE (Confirmación)
+    // CASO 2: INSCRIBIR EXISTENTE
     if (isset($_POST['accion']) && $_POST['accion'] == 'inscribir_existente') {
         try {
             $usuario_id = $_POST['usuario_id'];
             $cargo_id = $_POST['cargo_id'];
             $saldo_inicial = $_POST['saldo_inicial'] ?: 0;
 
-            // Insertar solo en Miembro_Ciclo
             $stmt_ins = $pdo->prepare("INSERT INTO Miembro_Ciclo (usuario_id, ciclo_id, cargo_id, saldo_ahorros, fecha_ingreso) VALUES (?, ?, ?, ?, CURDATE())");
             $stmt_ins->execute([$usuario_id, $ciclo_id, $cargo_id, $saldo_inicial]);
             
@@ -68,12 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    // CASO 3: CREAR E INSCRIBIR NUEVO (Formulario Completo)
+    // CASO 3: CREAR NUEVO
     if (isset($_POST['accion']) && $_POST['accion'] == 'crear_nuevo') {
         try {
             $pdo->beginTransaction();
 
-            // Datos Personales
             $nombre = trim($_POST['nombre']);
             $dui = trim($_POST['dui']);
             $telefono = trim($_POST['telefono']);
@@ -81,22 +74,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $email = trim($_POST['email']);
             $password_raw = $_POST['password'];
             
-            // Datos Ciclo
             $cargo_id = $_POST['cargo_id'];
             $saldo_inicial = $_POST['saldo_inicial'] ?: 0;
 
-            // Validar Email Duplicado
             $stmt_chk = $pdo->prepare("SELECT id FROM Usuario WHERE email = ?");
             $stmt_chk->execute([$email]);
             if ($stmt_chk->fetch()) throw new Exception("El correo electrónico ya está en uso.");
 
-            // Insertar Usuario
             $pass_hash = password_hash($password_raw, PASSWORD_DEFAULT);
             $stmt_u = $pdo->prepare("INSERT INTO Usuario (rol_id, nombre_completo, dui, telefono, direccion, email, password, estado) VALUES (3, ?, ?, ?, ?, ?, ?, 'ACTIVO')");
             $stmt_u->execute([$nombre, $dui, $telefono, $direccion, $email, $pass_hash]);
             $uid_nuevo = $pdo->lastInsertId();
 
-            // Insertar Miembro
             $stmt_m = $pdo->prepare("INSERT INTO Miembro_Ciclo (usuario_id, ciclo_id, cargo_id, saldo_ahorros, fecha_ingreso) VALUES (?, ?, ?, ?, CURDATE())");
             $stmt_m->execute([$uid_nuevo, $ciclo_id, $cargo_id, $saldo_inicial]);
 
@@ -108,8 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $pdo->rollBack();
             $mensaje = "Error: " . $e->getMessage();
             $tipo_mensaje = "danger";
-            $vista_actual = 'FORMULARIO_NUEVO'; // Mantenerse en el formulario
-            $dui_busqueda = $_POST['dui']; // Para no perder el dato
+            $vista_actual = 'FORMULARIO_NUEVO';
+            $dui_busqueda = $_POST['dui'];
         }
     }
 }
@@ -138,9 +127,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             <form method="POST" style="max-width: 400px; margin: 0 auto;">
                 <input type="hidden" name="accion" value="buscar">
+                
                 <div class="form-group">
-                    <input type="text" name="dui_search" required placeholder="Ej: 00000000-0" style="font-size: 1.2rem; text-align: center;" autofocus>
+                    <input type="text" 
+                           name="dui_search" 
+                           required 
+                           placeholder="23456789" 
+                           style="font-size: 1.2rem; text-align: center;" 
+                           autofocus
+                           maxlength="10"
+                           oninput="validarNumeros(this, 'alert-search')">
+                    
+                    <div id="alert-search" class="floating-alert">
+                        <i class='bx bx-error-circle'></i> Solo se aceptan números (Sin guiones ni letras).
+                    </div>
                 </div>
+                
                 <button type="submit" class="btn btn-primary btn-block">
                     <i class='bx bx-search'></i> VERIFICAR DUI
                 </button>
@@ -179,7 +181,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
                 </div>
 
                 <div class="flex-between" style="margin-top: 20px;">
@@ -196,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="card">
             <div style="margin-bottom: 20px;">
                 <h3><i class='bx bx-user-plus'></i> Registro de Nueva Socia</h3>
-                <p style="color: #666;">El DUI <strong><?php echo htmlspecialchars($dui_busqueda); ?></strong> no existe. Complete el formulario para registrarla.</p>
+                <p style="color: #666;">El DUI <strong><?php echo htmlspecialchars($dui_busqueda); ?></strong> no existe. Complete el formulario.</p>
             </div>
 
             <form method="POST" autocomplete="off">
@@ -207,16 +208,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label>Nombre Completo:</label>
                     <input type="text" name="nombre" required placeholder="Nombre Apellido">
                 </div>
+                
                 <div class="grid-2">
                     <div class="form-group">
                         <label>DUI:</label>
-                        <input type="text" name="dui" required value="<?php echo htmlspecialchars($dui_busqueda); ?>" readonly style="background: #eee;">
+                        <input type="text" 
+                               name="dui" 
+                               required 
+                               value="<?php echo htmlspecialchars($dui_busqueda); ?>"  
+                               style="background: #eee;"
+                               oninput="validarNumeros(this, 'alert-dui')">
+                        
+                        <div id="alert-dui" class="floating-alert">
+                            <i class='bx bx-error-circle'></i> Solo se aceptan números.
+                        </div>
                     </div>
+
                     <div class="form-group">
                         <label>Teléfono:</label>
-                        <input type="text" name="telefono" placeholder="0000-0000">
+                        <input type="text" 
+                               name="telefono" 
+                               placeholder="00000000"
+                               maxlength="8"
+                               oninput="validarNumeros(this, 'alert-tel')">
+                        
+                        <div id="alert-tel" class="floating-alert">
+                            <i class='bx bx-error-circle'></i> Solo se aceptan números.
+                        </div>
                     </div>
                 </div>
+                
                 <div class="form-group">
                     <label>Dirección:</label>
                     <input type="text" name="direccion" placeholder="Comunidad...">
@@ -246,7 +267,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <?php endforeach; ?>
                         </select>
                     </div>
-
                 </div>
 
                 <br>
@@ -261,5 +281,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <?php endif; ?>
 
 </div>
+
+<style>
+    .floating-alert {
+        display: none; /* Oculto por defecto */
+        background: #FFEBEE;
+        color: #C62828;
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin-top: 5px;
+        font-size: 0.85rem;
+        border: 1px solid #FFCDD2;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        animation: slideDown 0.2s ease;
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<script>
+    function validarNumeros(input, idAlerta) {
+        // 1. Guardamos el valor original
+        let valorOriginal = input.value;
+        
+        // 2. Limpiamos todo lo que NO sea número
+        let valorLimpio = valorOriginal.replace(/[^0-9]/g, '');
+        
+        // 3. Si son diferentes, es porque escribió una letra o símbolo
+        if (valorOriginal !== valorLimpio) {
+            // Reemplazamos el valor del input
+            input.value = valorLimpio;
+            
+            // Mostramos la alerta visual
+            let alerta = document.getElementById(idAlerta);
+            alerta.style.display = 'block';
+            
+            // La ocultamos después de 2.5 segundos
+            setTimeout(function() {
+                alerta.style.display = 'none';
+            }, 2500);
+        }
+    }
+</script>
 
 <?php require_once '../../includes/footer.php'; ?>

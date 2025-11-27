@@ -91,26 +91,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     <div class="card">
         <h3><i class='bx bx-calculator'></i> Cálculo del Sistema</h3>
-        <table class="table">
-            <tr>
-                <td>Saldo Inicial</td>
-                <td class="text-right">$<?php echo number_format($reunion['saldo_caja_inicial'], 2); ?></td>
-            </tr>
-            <tr>
-                <td style="color: var(--color-success);"> (+) Entradas Totales</td>
-                <td class="text-right">$<?php echo number_format($entradas, 2); ?></td>
-            </tr>
-            <tr>
-                <td style="color: var(--color-danger);"> (-) Salidas Totales</td>
-                <td class="text-right">$<?php echo number_format($salidas, 2); ?></td>
-            </tr>
-            <tr style="background: #E3F2FD; font-size: 1.2rem; font-weight: bold;">
-                <td>SALDO ESPERADO</td>
-                <td class="text-right" style="color: var(--color-brand);">
-                    $<?php echo number_format($saldo_sistema, 2); ?>
-                </td>
-            </tr>
-        </table>
+        
+        <div class="table-responsive-wrapper">
+            <table class="table table-fix-custom">
+                <tr>
+                    <td class="wrap-text">Saldo Inicial</td>
+                    <td class="text-right nowrap-text">$<?php echo number_format($reunion['saldo_caja_inicial'], 2); ?></td>
+                </tr>
+                <tr>
+                    <td class="wrap-text" style="color: var(--color-success);"> (+) Entradas Totales</td>
+                    <td class="text-right nowrap-text">$<?php echo number_format($entradas, 2); ?></td>
+                </tr>
+                <tr>
+                    <td class="wrap-text" style="color: var(--color-danger);"> (-) Salidas Totales</td>
+                    <td class="text-right nowrap-text">$<?php echo number_format($salidas, 2); ?></td>
+                </tr>
+                <tr style="background: #E3F2FD; font-size: 1.1rem; font-weight: bold;"> <td class="wrap-text">SALDO ESPERADO</td>
+                    <td class="text-right nowrap-text" style="color: var(--color-brand);">
+                        $<?php echo number_format($saldo_sistema, 2); ?>
+                    </td>
+                </tr>
+            </table>
+        </div>
     </div>
 
     <div class="card" style="border-left-color: var(--color-warning);">
@@ -162,11 +164,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </div>
 
 <style>
+    /* CSS CORREGIDO PARA EVITAR DESBORDAMIENTO */
+
+    /* 1. Contenedor Responsivo */
+    .table-responsive-wrapper {
+        width: 100%;
+        display: block;
+        overflow-x: auto; 
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @media (min-width: 992px) {
+        .table-responsive-wrapper { overflow-x: hidden; }
+    }
+
+    /* 2. Tabla Fixed Custom (Mata al min-width global) */
+    .table-fix-custom {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        min-width: 0 !important; /* <--- LA CLAVE */
+    }
+
+    .table-fix-custom td, .table-fix-custom th {
+        padding: 10px 5px;
+        vertical-align: middle;
+        overflow: visible;
+    }
+
+    /* 3. Utilidades de Texto */
+    .wrap-text {
+        white-space: normal !important;
+        word-wrap: break-word;
+        line-height: 1.2;
+    }
+
+    .nowrap-text {
+        white-space: nowrap !important;
+    }
+
     .text-right { text-align: right; }
     
     /* Estilos del Modal */
     .modal-overlay-custom {
-        display: none; /* Oculto por defecto */
+        display: none;
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.5);

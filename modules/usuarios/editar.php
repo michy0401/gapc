@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nombre = $_POST['nombre'];
     $email = $_POST['email'];
     $dui = $_POST['dui'];
+    $telefono = $_POST['telefono']; // Agregado
     $rol_id = $_POST['rol_id'];
     $estado = $_POST['estado'];
     $password_nueva = $_POST['password_nueva'];
@@ -24,13 +25,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Si escribieron contraseña nueva, la actualizamos. Si no, dejamos la vieja.
         if (!empty($password_nueva)) {
             $pass_hash = password_hash($password_nueva, PASSWORD_DEFAULT);
-            $sql = "UPDATE Usuario SET nombre_completo=?, email=?, dui=?, rol_id=?, estado=?, password=? WHERE id=?";
+            // Agregamos telefono a la consulta
+            $sql = "UPDATE Usuario SET nombre_completo=?, email=?, dui=?, telefono=?, rol_id=?, estado=?, password=? WHERE id=?";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$nombre, $email, $dui, $rol_id, $estado, $pass_hash, $user_id]);
+            $stmt->execute([$nombre, $email, $dui, $telefono, $rol_id, $estado, $pass_hash, $user_id]);
         } else {
-            $sql = "UPDATE Usuario SET nombre_completo=?, email=?, dui=?, rol_id=?, estado=? WHERE id=?";
+            // Agregamos telefono a la consulta
+            $sql = "UPDATE Usuario SET nombre_completo=?, email=?, dui=?, telefono=?, rol_id=?, estado=? WHERE id=?";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$nombre, $email, $dui, $rol_id, $estado, $user_id]);
+            $stmt->execute([$nombre, $email, $dui, $telefono, $rol_id, $estado, $user_id]);
         }
 
         $mensaje = "Usuario actualizado correctamente.";
@@ -72,12 +75,35 @@ $roles = $pdo->query("SELECT * FROM Rol")->fetchAll();
             <div class="grid-2">
                 <div class="form-group">
                     <label>DUI:</label>
-                    <input type="text" name="dui" value="<?php echo htmlspecialchars($u['dui']); ?>" required>
+                    <input type="text" 
+                           name="dui" 
+                           value="<?php echo htmlspecialchars($u['dui']); ?>" 
+                           required
+                           maxlength="10"
+                           oninput="validarNumeros(this, 'alert-dui')">
+                    
+                    <div id="alert-dui" class="floating-alert">
+                        <i class='bx bx-error-circle'></i> Solo números.
+                    </div>
                 </div>
+
                 <div class="form-group">
-                    <label>Correo (Login):</label>
-                    <input type="email" name="email" value="<?php echo htmlspecialchars($u['email']); ?>" required>
+                    <label>Teléfono:</label>
+                    <input type="text" 
+                           name="telefono" 
+                           value="<?php echo htmlspecialchars($u['telefono']); ?>"
+                           maxlength="8"
+                           oninput="validarNumeros(this, 'alert-tel')">
+
+                    <div id="alert-tel" class="floating-alert">
+                        <i class='bx bx-error-circle'></i> Solo números.
+                    </div>
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label>Correo (Login):</label>
+                <input type="email" name="email" value="<?php echo htmlspecialchars($u['email']); ?>" required>
             </div>
 
             <div style="background: #E3F2FD; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #BBDEFB;">
@@ -118,5 +144,40 @@ $roles = $pdo->query("SELECT * FROM Rol")->fetchAll();
         </form>
     </div>
 </div>
+
+<style>
+    .floating-alert {
+        display: none;
+        background: #FFEBEE;
+        color: #C62828;
+        padding: 5px 10px;
+        border-radius: 4px;
+        margin-top: 5px;
+        font-size: 0.8rem;
+        border: 1px solid #FFCDD2;
+        animation: slideDown 0.2s ease;
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<script>
+    function validarNumeros(input, idAlerta) {
+        let valorOriginal = input.value;
+        let valorLimpio = valorOriginal.replace(/[^0-9]/g, '');
+        
+        if (valorOriginal !== valorLimpio) {
+            input.value = valorLimpio;
+            let alerta = document.getElementById(idAlerta);
+            alerta.style.display = 'block';
+            setTimeout(function() {
+                alerta.style.display = 'none';
+            }, 2000);
+        }
+    }
+</script>
 
 <?php require_once '../../includes/footer.php'; ?>

@@ -11,6 +11,11 @@ $stmt = $pdo->prepare("SELECT c.*, g.nombre as grupo FROM Ciclo c JOIN Grupo g O
 $stmt->execute([$ciclo_id]);
 $ciclo = $stmt->fetch();
 
+// --- VALIDACIÓN DE FECHA (NUEVO) ---
+$hoy = date('Y-m-d');
+$fecha_fin_estimada = $ciclo['fecha_fin_estimada'];
+$es_anticipado = ($hoy < $fecha_fin_estimada);
+
 // 2. VALIDACIÓN DE DEUDAS
 $sql_pendientes = "SELECT p.*, u.nombre_completo 
                    FROM Prestamo p 
@@ -45,7 +50,7 @@ $total_gastos = (float) $stmt_gas->fetchColumn();
 
 $utilidad_neta = $total_ganancia - $total_gastos;
 
-// 4. CAPITAL SOCIAL (CORREGIDO AQUÍ) 🛠️
+// 4. CAPITAL SOCIAL
 $sql_ahorro = "SELECT SUM(saldo_ahorros) FROM Miembro_Ciclo WHERE ciclo_id = ?";
 $stmt_a = $pdo->prepare($sql_ahorro);
 $stmt_a->execute([$ciclo_id]);
@@ -65,7 +70,8 @@ $stmt_s->execute([$ciclo_id]);
 $socios = $stmt_s->fetchAll();
 
 // 6. PROCESAR CIERRE
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
+// Agregamos la condición !$es_anticipado para proteger el backend también
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas && !$es_anticipado) {
     try {
         $stmt_close = $pdo->prepare("UPDATE Ciclo SET estado = 'LIQUIDADO' WHERE id = ?");
         $stmt_close->execute([$ciclo_id]);
@@ -101,29 +107,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
     </div>
 <?php endif; ?>
 
+<?php if ($es_anticipado): ?>
+    <div class="card" style="border-left: 5px solid #FF9800; background-color: #FFF3E0;">
+        <h3 style="color: #EF6C00;"><i class='bx bx-time-five'></i> AÚN NO ES FECHA DE CIERRE</h3>
+        <p>
+            El ciclo está programado para finalizar el <strong><?php echo date('d/m/Y', strtotime($fecha_fin_estimada)); ?></strong>.
+            <br>
+            Hoy es <strong><?php echo date('d/m/Y'); ?></strong>. No se puede liquidar antes de tiempo.
+        </p>
+    </div>
+<?php endif; ?>
+
 <div class="grid-2">
     <div class="card">
         <h3><i class='bx bx-pie-chart-alt-2'></i> La "Bolsa" a Repartir</h3>
-        <table class="table">
-            <tr>
-                <td>Total Ahorrado (Capital)</td>
-                <td class="text-right">$<?php echo number_format($total_ahorro, 2); ?></td>
-            </tr>
-            <tr>
-                <td>(+) Intereses y Multas Cobradas</td>
-                <td class="text-right">$<?php echo number_format($total_ganancia, 2); ?></td>
-            </tr>
-            <tr>
-                <td>(-) Gastos Operativos</td>
-                <td class="text-right">$<?php echo number_format($total_gastos, 2); ?></td>
-            </tr>
-            <tr style="background: #E8F5E9; font-weight: bold; font-size: 1.1rem;">
-                <td>UTILIDAD NETA (GANANCIA)</td>
-                <td class="text-right" style="color: var(--color-success);">
-                    $<?php echo number_format($utilidad_neta, 2); ?>
-                </td>
-            </tr>
-        </table>
+        <div class="table-responsive-wrapper">
+            <table class="table table-fix-custom">
+                <tr>
+                    <td class="wrap-text" style="width: 55%;">Total Ahorrado (Capital)</td>
+                    <td class="text-right nowrap-text" style="width: 45%;">$<?php echo number_format($total_ahorro, 2); ?></td>
+                </tr>
+                <tr>
+                    <td class="wrap-text">(+) Intereses y Multas</td>
+                    <td class="text-right nowrap-text">$<?php echo number_format($total_ganancia, 2); ?></td>
+                </tr>
+                <tr>
+                    <td class="wrap-text">(-) Gastos Operativos</td>
+                    <td class="text-right nowrap-text">$<?php echo number_format($total_gastos, 2); ?></td>
+                </tr>
+                <tr style="background: #E8F5E9; font-weight: bold;">
+                    <td class="wrap-text">UTILIDAD NETA</td>
+                    <td class="text-right nowrap-text" style="color: var(--color-success);">
+                        $<?php echo number_format($utilidad_neta, 2); ?>
+                    </td>
+                </tr>
+            </table>
+        </div>
         
         <div style="margin-top: 20px; padding: 15px; background: #E3F2FD; border-radius: 8px; text-align: center;">
             <small>RENTABILIDAD POR DÓLAR</small>
@@ -136,14 +155,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
 
     <div class="card">
         <h3><i class='bx bx-list-ol'></i> Simulación de Reparto</h3>
-        <div class="table-container" style="max-height: 400px; overflow-y: auto;">
-            <table class="table">
+        <div class="table-responsive-wrapper" style="max-height: 400px; overflow-y: auto;">
+            <table class="table table-fix-custom">
                 <thead>
                     <tr>
-                        <th>Socia</th>
-                        <th class="text-right">Ahorro</th>
-                        <th class="text-right">Ganancia</th>
-                        <th class="text-right">Total a Recibir</th>
+                        <th style="width: 40%;">Socia</th>
+                        <th class="text-right" style="width: 20%;">Ahorro</th>
+                        <th class="text-right" style="width: 20%;">Ganancia</th>
+                        <th class="text-right" style="width: 20%;">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -152,13 +171,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
                         $total = $s['saldo_ahorros'] + $ganancia;
                     ?>
                     <tr>
-                        <td><?php echo htmlspecialchars($s['nombre_completo']); ?></td>
-                        <td class="text-right">$<?php echo number_format($s['saldo_ahorros'], 2); ?></td>
-                        <td class="text-right" style="color: var(--color-success);">
-                            + $<?php echo number_format($ganancia, 2); ?>
+                        <td class="wrap-text"><?php echo htmlspecialchars($s['nombre_completo']); ?></td>
+                        <td class="text-right nowrap-text">$<?php echo number_format($s['saldo_ahorros'], 2); ?></td>
+                        <td class="text-right nowrap-text" style="color: var(--color-success);">
+                            +<?php echo number_format($ganancia, 2); ?>
                         </td>
-                        <td class="text-right" style="font-weight: bold;">
-                            $<?php echo number_format($total, 2); ?>
+                        <td class="text-right nowrap-text" style="font-weight: bold;">
+                            <?php echo number_format($total, 2); ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -168,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
     </div>
 </div>
 
-<?php if (!$hay_deudas): ?>
+<?php if (!$hay_deudas && !$es_anticipado): ?>
     <div class="card" style="text-align: center; border: 2px dashed var(--color-warning);">
         <h3>⚠️ Acción Irreversible</h3>
         <p>Al confirmar, el ciclo pasará a estado <strong>LIQUIDADO</strong>. Asegúrese de tener todo el dinero en efectivo.</p>
@@ -204,6 +223,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !$hay_deudas) {
 
 <style> 
     .text-right { text-align: right; } 
+    
+    /* --- CSS ESPECIAL PARA ESTAS TABLAS --- */
+    /* ... (mismo CSS que ya tenías, se mantiene para asegurar el estilo) ... */
+    .table-responsive-wrapper {
+        width: 100%;
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    @media (min-width: 992px) {
+        .table-responsive-wrapper { overflow-x: hidden; }
+    }
+    .table-fix-custom {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+        min-width: 0 !important; 
+    }
+    @media (max-width: 768px) {
+        .table-fix-custom {
+            min-width: 600px !important; 
+        }
+    }
+    .table-fix-custom th, .table-fix-custom td {
+        padding: 8px 4px;
+        vertical-align: middle;
+        overflow: visible;
+        text-overflow: clip;
+    }
+    .wrap-text {
+        white-space: normal !important;
+        word-wrap: break-word;
+        line-height: 1.2;
+    }
+    .nowrap-text {
+        white-space: nowrap !important;
+    }
+    
     .modal-overlay-custom {
         display: none;
         position: fixed;

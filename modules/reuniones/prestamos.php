@@ -29,52 +29,67 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $plazo = intval($_POST['plazo']);
             $proposito = $_POST['proposito'];
 
-            // A.1 VALIDAR FONDOS DE CAJA (¿Hay dinero físico?)
+            // A.1 VALIDAR FONDOS DE CAJA
             if ($monto > $saldo_disponible_caja) {
                 throw new Exception("No hay suficiente efectivo en caja. Disponible: $" . number_format($saldo_disponible_caja, 2));
             }
 
-            // A.2 VALIDAR REGLA DE NEGOCIO (¿El socio tiene suficiente ahorro?)
-            // Consultamos el ahorro actual de este miembro específico
+            // A.2 VALIDAR CAPACIDAD DE ENDEUDAMIENTO (CORREGIDO) 🛑
+            // 1. Obtenemos ahorro total
             $stmt_ahorro = $pdo->prepare("SELECT saldo_ahorros FROM Miembro_Ciclo WHERE id = ?");
             $stmt_ahorro->execute([$miembro_id]);
             $ahorro_socio = $stmt_ahorro->fetchColumn() ?: 0;
 
-            // La regla es 1:1 (Solo se presta hasta lo ahorrado)
-            // Nota: Si la regla fuera 3 veces el ahorro, cambiarías a: $ahorro_socio * 3
-            if ($monto > $ahorro_socio) {
-                throw new Exception("El monto excede el límite del socio. Su ahorro es: $" . number_format($ahorro_socio, 2));
+            // 2. Obtenemos deuda actual (Capital pendiente de préstamos activos)
+            $stmt_deuda = $pdo->prepare("
+                SELECT SUM(p.monto_aprobado - IFNULL((
+                    SELECT SUM(monto) FROM Transaccion_Caja 
+                    WHERE prestamo_id = p.id AND tipo_movimiento = 'PAGO_PRESTAMO_CAPITAL'
+                ), 0)) 
+                FROM Prestamo p 
+                WHERE p.miembro_ciclo_id = ? AND p.estado = 'ACTIVO'
+            ");
+            $stmt_deuda->execute([$miembro_id]);
+            $deuda_actual = $stmt_deuda->fetchColumn() ?: 0;
+
+            // 3. Calculamos cuánto le queda disponible
+            $capacidad_disponible = $ahorro_socio - $deuda_actual;
+
+            if ($monto > $capacidad_disponible) {
+                throw new Exception(
+                    "El socio ya debe $" . number_format($deuda_actual, 2) . 
+                    ". Su límite disponible es $" . number_format($capacidad_disponible, 2) . 
+                    " (Ahorro total: $" . number_format($ahorro_socio, 2) . ")"
+                );
             }
 
-            // Cálculos
+            // Cálculos del nuevo préstamo
             $tasa = $reunion['tasa_interes_mensual'];
             $interes_fijo = $monto * ($tasa / 100);
             $vencimiento = date('Y-m-d', strtotime("+$plazo months"));
 
-            // Insertar Préstamo
+            // Insertar
             $sql_p = "INSERT INTO Prestamo (miembro_ciclo_id, reunion_solicitud_id, monto_aprobado, plazo_meses, tasa_interes, monto_interes_fijo_mensual, fecha_vencimiento, estado) 
                       VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVO')";
             $stmt_p = $pdo->prepare($sql_p);
             $stmt_p->execute([$miembro_id, $reunion_id, $monto, $plazo, $tasa, $interes_fijo, $vencimiento]);
             $prestamo_id = $pdo->lastInsertId();
 
-            // Registrar Salida de Caja
+            // Registrar Salida
             $sql_t = "INSERT INTO Transaccion_Caja (reunion_id, miembro_ciclo_id, prestamo_id, tipo_movimiento, monto, observacion) 
                       VALUES (?, ?, ?, 'DESEMBOLSO_PRESTAMO', ?, ?)";
             $pdo->prepare($sql_t)->execute([$reunion_id, $miembro_id, $prestamo_id, $monto, $proposito]);
 
-            // Actualizar saldo local visual
             $saldo_disponible_caja -= $monto;
             $mensaje = "Préstamo entregado correctamente.";
         }
 
-        // --- CASO B: RECIBIR PAGO (ENTRA DINERO) ---
+        // --- CASO B: PAGAR PRÉSTAMO ---
         if ($_POST['accion'] == 'pagar_prestamo') {
             $prestamo_id = $_POST['prestamo_id'];
             $pago_capital = floatval($_POST['pago_capital']);
             $pago_interes = floatval($_POST['pago_interes']);
             
-            // Obtener info del prestamo para saber quién paga y CUÁNTO DEBÍA
             $p_info = $pdo->prepare("SELECT miembro_ciclo_id, monto_aprobado FROM Prestamo WHERE id = ?");
             $p_info->execute([$prestamo_id]);
             $datos_prestamo = $p_info->fetch();
@@ -91,18 +106,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $pdo->prepare($sql_int)->execute([$reunion_id, $datos_prestamo['miembro_ciclo_id'], $prestamo_id, $pago_interes]);
             }
 
-            // === 🚨 CORRECCIÓN: VERIFICAR SI SE LIQUIDÓ EL PRÉSTAMO ===
-            
-            // 1. Sumar todo lo pagado a capital hasta ahora (incluyendo el pago de este instante)
+            // Verificar liquidación
             $stmt_pagado = $pdo->prepare("SELECT SUM(monto) FROM Transaccion_Caja WHERE prestamo_id = ? AND tipo_movimiento = 'PAGO_PRESTAMO_CAPITAL'");
             $stmt_pagado->execute([$prestamo_id]);
             $total_pagado = $stmt_pagado->fetchColumn() ?: 0;
 
-            // 2. Comparar con el monto original (con un margen de error de 1 centavo por decimales)
             $saldo_pendiente = $datos_prestamo['monto_aprobado'] - $total_pagado;
 
             if ($saldo_pendiente <= 0.01) {
-                // ¡SE ACABÓ LA DEUDA! Actualizamos el estado a FINALIZADO
                 $pdo->prepare("UPDATE Prestamo SET estado = 'FINALIZADO' WHERE id = ?")->execute([$prestamo_id]);
                 $mensaje = "Pago registrado. ¡El préstamo ha sido LIQUIDADO totalmente!";
             } else {
@@ -131,9 +142,14 @@ $stmt_c = $pdo->prepare($sql_cartera);
 $stmt_c->execute([$reunion['ciclo_id']]);
 $cartera = $stmt_c->fetchAll();
 
-// LISTA DE MIEMBROS (AHORA CON EL SALDO DE AHORRO)
+// LISTA DE MIEMBROS CON CÁLCULO DE DISPONIBILIDAD (CORREGIDO) 🟢
 $stmt_m = $pdo->prepare("
-    SELECT mc.id, u.nombre_completo, mc.saldo_ahorros 
+    SELECT mc.id, u.nombre_completo, mc.saldo_ahorros,
+    (
+        SELECT SUM(p.monto_aprobado - IFNULL((SELECT SUM(monto) FROM Transaccion_Caja WHERE prestamo_id = p.id AND tipo_movimiento='PAGO_PRESTAMO_CAPITAL'), 0))
+        FROM Prestamo p 
+        WHERE p.miembro_ciclo_id = mc.id AND p.estado = 'ACTIVO'
+    ) as deuda_actual
     FROM Miembro_Ciclo mc 
     JOIN Usuario u ON mc.usuario_id = u.id 
     WHERE mc.ciclo_id = ? 
@@ -182,12 +198,7 @@ $miembros = $stmt_m->fetchAll();
             <?php foreach($cartera as $p): ?>
                 <?php 
                     $saldo_pendiente = $p['monto_aprobado'] - $p['capital_pagado']; 
-                    if ($saldo_pendiente <= 0) continue; 
-                    $cuota_capital_mensual = $p['monto_aprobado'] / $p['plazo_meses'];
-                ?>
-                <?php 
-                    $saldo_pendiente = $p['monto_aprobado'] - $p['capital_pagado']; 
-                    if ($saldo_pendiente <= 0) continue; 
+                    if ($saldo_pendiente <= 0.01) continue; 
                     $cuota_capital_mensual = $p['monto_aprobado'] / $p['plazo_meses'];
                 ?>
                 <div style="background: #FFFDE7; border: 1px solid #FFF9C4; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
@@ -234,7 +245,7 @@ $miembros = $stmt_m->fetchAll();
     <div class="card" style="height: fit-content;">
         <h3 style="color: var(--color-success);"><i class='bx bx-plus-circle'></i> Nuevo Préstamo</h3>
         <p style="color: var(--text-muted); font-size:0.9rem; margin-bottom:15px;">
-            <i class='bx bx-info-circle'></i> Regla: El préstamo no puede superar el ahorro del socio.
+            <i class='bx bx-info-circle'></i> Regla: El préstamo (deuda total) no puede superar el ahorro del socio.
         </p>
 
         <form method="POST">
@@ -244,16 +255,22 @@ $miembros = $stmt_m->fetchAll();
                 <label>Solicitante:</label>
                 <select name="miembro_id" id="select_miembro" required onchange="actualizarLimite()">
                     <option value="" data-limit="0">-- Seleccione --</option>
-                    <?php foreach($miembros as $m): ?>
-                        <option value="<?php echo $m['id']; ?>" data-limit="<?php echo $m['saldo_ahorros']; ?>">
-                            <?php echo htmlspecialchars($m['nombre_completo']); ?> (Ahorro: $<?php echo $m['saldo_ahorros']; ?>)
+                    <?php foreach($miembros as $m): 
+                        // El límite real es Ahorro - Deuda Actual
+                        $deuda = $m['deuda_actual'] ?: 0;
+                        $disponible = $m['saldo_ahorros'] - $deuda;
+                        // No permitimos negativos en la visual
+                        $disponible = ($disponible < 0) ? 0 : $disponible;
+                    ?>
+                        <option value="<?php echo $m['id']; ?>" data-limit="<?php echo $disponible; ?>">
+                            <?php echo htmlspecialchars($m['nombre_completo']); ?> (Disp: $<?php echo number_format($disponible, 2); ?>)
                         </option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
             <div id="info_limite" style="display:none; background: #E3F2FD; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9rem; color: #1565C0;">
-                Límite máximo para este socio: <strong id="texto_limite">$0.00</strong>
+                Capacidad de endeudamiento: <strong id="texto_limite">$0.00</strong>
             </div>
 
             <div class="grid-2">
@@ -291,26 +308,32 @@ function actualizarLimite() {
     var select = document.getElementById("select_miembro");
     var selectedOption = select.options[select.selectedIndex];
     
-    // Límite del socio (Ahorro)
+    // Este límite ya viene calculado desde PHP (Ahorro - Deuda)
     var limiteSocio = parseFloat(selectedOption.getAttribute("data-limit")) || 0;
     
-    // Límite de la caja (Global)
+    // Límite de la caja
     var limiteCaja = <?php echo $saldo_disponible_caja; ?>;
     
-    // El límite real es el MENOR de los dos (No puedo prestar más de lo que tiene el socio, ni más de lo que hay en caja)
+    // El tope es el menor de los dos
     var limiteReal = Math.min(limiteSocio, limiteCaja);
     
     var divInfo = document.getElementById("info_limite");
     var textoLimite = document.getElementById("texto_limite");
     var inputMonto = document.getElementById("input_monto");
 
-    if (limiteSocio > 0) {
+    if (limiteSocio >= 0) {
         divInfo.style.display = "block";
         textoLimite.innerText = "$" + limiteSocio.toFixed(2);
         
-        // Actualizamos el atributo max del input para validación HTML
         inputMonto.max = limiteReal;
         inputMonto.placeholder = "Max: $" + limiteReal.toFixed(2);
+        
+        if(limiteReal <= 0) {
+            inputMonto.disabled = true;
+            inputMonto.placeholder = "Sin cupo";
+        } else {
+            inputMonto.disabled = false;
+        }
     } else {
         divInfo.style.display = "none";
         inputMonto.max = 0;
