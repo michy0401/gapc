@@ -276,7 +276,7 @@ $miembros = $stmt_m->fetchAll();
             <div class="grid-2">
                 <div class="form-group">
                     <label>Monto ($):</label>
-                    <input type="number" name="monto" id="input_monto" step="5" min="5" required placeholder="0.00">
+                    <input type="number" name="monto" id="input_monto" required placeholder="0.00">
                 </div>
                 <div class="form-group">
                     <label>Plazo (Meses):</label>
