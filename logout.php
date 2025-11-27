@@ -20,6 +20,6 @@ if (ini_get("session.use_cookies")) {
 session_destroy();
 
 // 5. Redirigir al Login
-header("Location: modules/auth/login.php");
+header("Location: index.php");
 exit;
 ?>
